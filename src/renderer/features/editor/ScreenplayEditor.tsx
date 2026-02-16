@@ -17,6 +17,31 @@ function getDocContent(editor: Editor): { content?: unknown[] } {
   }
 }
 
+function syncActiveBeatFromSelection(
+  editor: Editor,
+  setActiveBeatType: (t: BeatType | null) => void,
+  setActiveBeatId: (id: string | null) => void
+) {
+  try {
+    const { state } = editor
+    const { selection } = state
+    const $pos = selection.$from
+    const node = $pos.parent
+    if (node.type.name === 'beat') {
+      const beatType = (node.attrs.beatType ?? 'scene-heading') as BeatType
+      const beatId = (node.attrs.beatId ?? '') as string
+      setActiveBeatType(beatType)
+      setActiveBeatId(beatId)
+    } else {
+      setActiveBeatType(null)
+      setActiveBeatId(null)
+    }
+  } catch {
+    setActiveBeatType(null)
+    setActiveBeatId(null)
+  }
+}
+
 interface ScreenplayEditorProps {
   sceneId: string
   beats: Beat[]
@@ -27,6 +52,7 @@ export function ScreenplayEditor({ sceneId, beats, onBeatsChange }: ScreenplayEd
   const updatingFromStore = useRef(false)
   const lastSceneId = useRef<string | null>(null)
   const setActiveBeatType = useProjectStore((s) => s.setActiveBeatType)
+  const setActiveBeatId = useProjectStore((s) => s.setActiveBeatId)
 
   const editor = useEditor({
     extensions,
@@ -47,38 +73,18 @@ export function ScreenplayEditor({ sceneId, beats, onBeatsChange }: ScreenplayEd
       const doc = getDocContent(editor) as Parameters<typeof tiptapJsonToBeats>[0]
       const next = tiptapJsonToBeats(doc)
       onBeatsChange(next)
-      try {
-        const { state } = editor
-        const { selection } = state
-        const $pos = selection.$from
-        const node = $pos.parent
-        if (node.type.name === 'beat') {
-          const beatType = (node.attrs.beatType ?? 'scene-heading') as BeatType
-          setActiveBeatType(beatType)
-        } else {
-          setActiveBeatType(null)
-        }
-      } catch {
-        setActiveBeatType(null)
-      }
+      syncActiveBeatFromSelection(editor, setActiveBeatType, setActiveBeatId)
     },
     onSelectionUpdate: ({ editor }) => {
-      try {
-        const { state } = editor
-        const { selection } = state
-        const $pos = selection.$from
-        const node = $pos.parent
-        if (node.type.name === 'beat') {
-          const beatType = (node.attrs.beatType ?? 'scene-heading') as BeatType
-          setActiveBeatType(beatType)
-        } else {
-          setActiveBeatType(null)
-        }
-      } catch {
-        setActiveBeatType(null)
-      }
+      syncActiveBeatFromSelection(editor, setActiveBeatType, setActiveBeatId)
     },
   })
+
+  // Sync active beat when editor first mounts so the first beat shows the shortcut without user interaction
+  useEffect(() => {
+    if (!editor) return
+    syncActiveBeatFromSelection(editor, setActiveBeatType, setActiveBeatId)
+  }, [editor, setActiveBeatType, setActiveBeatId])
 
   useEffect(() => {
     if (!editor) return
@@ -87,6 +93,7 @@ export function ScreenplayEditor({ sceneId, beats, onBeatsChange }: ScreenplayEd
       updatingFromStore.current = true
       editor.commands.setContent(beatsToTiptapJson(beats))
       updatingFromStore.current = false
+      syncActiveBeatFromSelection(editor, setActiveBeatType, setActiveBeatId)
       return
     }
     const current = tiptapJsonToBeats(getDocContent(editor) as Parameters<typeof tiptapJsonToBeats>[0])
@@ -109,7 +116,8 @@ export function ScreenplayEditor({ sceneId, beats, onBeatsChange }: ScreenplayEd
     updatingFromStore.current = true
     editor.commands.setContent(beatsToTiptapJson(beats))
     updatingFromStore.current = false
-  }, [sceneId, beats, editor])
+    syncActiveBeatFromSelection(editor, setActiveBeatType, setActiveBeatId)
+  }, [sceneId, beats, editor, setActiveBeatType, setActiveBeatId])
 
   if (!editor) return <div className="p-4 text-[rgb(var(--text-muted))]">Loading editor…</div>
 

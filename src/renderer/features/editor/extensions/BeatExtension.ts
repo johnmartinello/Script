@@ -84,9 +84,10 @@ export const BeatBlock = Node.create<BeatOptions>({
         const nextType = nextBeatType(beatType)
         const pos = $pos.after()
         const beatId = crypto.randomUUID()
-        const content = nextType === 'choice-point'
-          ? { type: 'beat', attrs: { beatType: nextType, beatId, options: [] }, content: [] }
-          : { type: 'beat', attrs: { beatType: nextType, beatId, options: null }, content: [{ type: 'text', text: '' }] }
+        const content =
+          nextType === 'choice-point'
+            ? { type: 'beat', attrs: { beatType: nextType, beatId, options: [] }, content: [] }
+            : { type: 'beat', attrs: { beatType: nextType, beatId, options: null }, content: [] }
         editor.chain().insertContentAt(pos, content).focus(pos + 1).run()
         return true
       },
@@ -103,10 +104,21 @@ export const BeatBlock = Node.create<BeatOptions>({
 
 function nextBeatType(current: BeatType): BeatType {
   switch (current) {
+    case 'scene-heading':
+      return 'action'
+    case 'action':
+      return 'action'
     case 'character-cue':
       return 'dialogue'
     case 'dialogue':
+      return 'action'
     case 'parenthetical':
+      return 'dialogue'
+    case 'transition':
+      return 'scene-heading'
+    case 'choice-point':
+      return 'action'
+    case 'set-variable':
       return 'action'
     default:
       return 'action'

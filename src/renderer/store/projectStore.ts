@@ -32,6 +32,8 @@ interface ProjectState {
   referenceSidebarOpen: boolean
   /** Beat type at the current editor selection (for context-aware help). */
   activeBeatType: Beat['type'] | null
+  /** Beat id at the current editor selection (e.g. to show shortcut only on active beat). */
+  activeBeatId: string | null
 }
 
 interface ProjectActions {
@@ -43,6 +45,7 @@ interface ProjectActions {
   setViewMode: (mode: ViewMode) => void
   toggleReferenceSidebar: () => void
   setActiveBeatType: (type: Beat['type'] | null) => void
+  setActiveBeatId: (id: string | null) => void
 
   addScene: (title?: string) => Scene
   updateScene: (sceneId: string, patch: Partial<Pick<Scene, 'title' | 'chapterId'>>) => void
@@ -104,6 +107,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   dirty: false,
   referenceSidebarOpen: false,
   activeBeatType: null,
+  activeBeatId: null,
 
   setProject: (project) => set({ project, dirty: false }),
   updateProject: (patch) =>
@@ -121,6 +125,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   toggleReferenceSidebar: () =>
     set((state) => ({ referenceSidebarOpen: !state.referenceSidebarOpen })),
   setActiveBeatType: (type) => set({ activeBeatType: type }),
+  setActiveBeatId: (id) => set({ activeBeatId: id }),
 
   addScene: (title) => {
     const scene = createScene(title ?? 'Untitled Scene')

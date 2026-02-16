@@ -32,8 +32,10 @@ export function BeatBlockView(props: ReactNodeViewProps) {
   const isChoice = type === 'choice-point'
   const scenes = useProjectStore((s) => s.project?.scenes ?? [])
   const selectedSceneId = useProjectStore((s) => s.selectedSceneId)
+  const activeBeatId = useProjectStore((s) => s.activeBeatId)
   const updateChoiceOption = useProjectStore((s) => s.updateChoiceOption)
   const beatId = (node.attrs.beatId ?? '') as string
+  const isActiveBeat = activeBeatId === beatId
 
   const className =
     type === 'scene-heading'
@@ -49,7 +51,7 @@ export function BeatBlockView(props: ReactNodeViewProps) {
   return (
     <NodeViewWrapper as="div" data-beat="" className="my-1">
       <div className={`flex items-baseline gap-2 ${isChoice ? 'flex-col' : ''}`}>
-        <BeatTypeDropdown type={type} onChange={(next) => {
+        <BeatTypeDropdown type={type} showShortcut={isActiveBeat} onChange={(next) => {
           const attrs: Record<string, unknown> = {
             ...node.attrs,
             beatType: next,
@@ -134,9 +136,11 @@ export function BeatBlockView(props: ReactNodeViewProps) {
 
 function BeatTypeDropdown({
   type,
+  showShortcut,
   onChange,
 }: {
   type: BeatType
+  showShortcut: boolean
   onChange: (next: BeatType) => void
 }) {
   return (
@@ -164,7 +168,7 @@ function BeatTypeDropdown({
       }}
     >
       <span>{beatLabels[type]}</span>
-      {beatShortcutLabels[type] && (
+      {showShortcut && beatShortcutLabels[type] && (
         <span className="text-[10px] text-[rgb(var(--text-muted))]">
           {beatShortcutLabels[type]}
         </span>
