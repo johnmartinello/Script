@@ -117,6 +117,8 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
           [scene.id]: { x: 100 + state.project.scenes.length * 180, y: 100 },
         },
       },
+      selectedSceneId: scene.id,
+      viewMode: 'editor',
       dirty: true,
     }))
     return scene

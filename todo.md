@@ -1,3 +1,5 @@
-- rightside Sidebar (toggable )and tooltips for tips and types of scenes e etc (e.g: when creating the location of the scene, have tooltips like INT EXT; for cuts, list of different cuts and in the sidebar appear the list with a description of the cut. E.g match cut: connects two, often disparate, scenes by matching the composition, movement, or sound of the first shot with a similar element in the second shot.)
-    - ALso with this, selection of type of beats (both GUI and keyboard shortcuts)
-    
+1. Instead of having the scenes as root, you first need to create a project, which has scenes in it
+2. you should be able to open the editor of a project, which will then mount the graph connections into a single "unified script" (in the editor page)
+    - if there's branching scenes, it should have a comment under the title of the scene whats the condition
+3. You can create different scenes without having to click in the new scene button. 
+    - For each scene heading in the text, it should automatically create a new scene (numbered. TODO: figure out how to number branching scenes)

@@ -79,7 +79,9 @@ export function GraphPanel() {
   )
 
   const onNodeDoubleClick = useCallback((_: React.MouseEvent, node: Node) => {
-    useProjectStore.getState().setSelectedSceneId(node.id)
+    const store = useProjectStore.getState()
+    store.setSelectedSceneId(node.id)
+    store.setViewMode('split')
   }, [])
 
   const addScene = useCallback(() => {

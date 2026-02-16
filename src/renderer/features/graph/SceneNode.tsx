@@ -17,11 +17,11 @@ export function SceneNode({ data, selected }: NodeProps<Node<SceneNodeData, 'sce
           : 'border-[rgb(var(--border))] hover:border-[rgb(var(--text-muted))]'
       }`}
     >
-      <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-[rgb(var(--accent))]" />
+      <Handle type="target" position={Position.Left} className="!w-2 !h-2 !bg-[rgb(var(--accent))]" />
       <div className="text-sm font-medium truncate" title={d.title}>
         {d.title || 'Untitled'}
       </div>
-      <Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-[rgb(var(--accent))]" />
+      <Handle type="source" position={Position.Right} className="!w-2 !h-2 !bg-[rgb(var(--accent))]" />
     </div>
   )
 }
