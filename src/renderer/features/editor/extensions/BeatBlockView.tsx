@@ -47,9 +47,9 @@ export function BeatBlockView(props: ReactNodeViewProps) {
           : type === 'choice-point'
             ? 'border border-[rgb(var(--border))] rounded p-2 bg-[rgb(var(--bg-muted))]'
             : ''
-
+// Beat spacing margin
   return (
-    <NodeViewWrapper as="div" data-beat="" className="my-1">
+    <NodeViewWrapper as="div" data-beat="" className="my-3">
       <div className={`flex items-baseline gap-2 ${isChoice ? 'flex-col' : ''}`}>
         <BeatTypeDropdown type={type} showShortcut={isActiveBeat} onChange={(next) => {
           const attrs: Record<string, unknown> = {
