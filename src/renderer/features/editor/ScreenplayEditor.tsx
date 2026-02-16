@@ -31,7 +31,7 @@ export function ScreenplayEditor({ sceneId, beats, onBeatsChange }: ScreenplayEd
     content: beatsToTiptapJson(beats),
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none min-h-[200px] p-4 focus:outline-none',
+        class: 'screenplay-editor max-w-none min-h-[200px] p-4 focus:outline-none',
       },
       handleKeyDown: (_view, event) => {
         if (event.key === 'Enter' && !event.shiftKey) {
