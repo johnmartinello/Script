@@ -4,11 +4,11 @@
 
 @layer base {
   :root {
-    --bg: 12 12 12;
-    --bg-muted: 22 22 24;
-    --border: 44 44 48;
-    --text: 232 232 236;
-    --text-muted: 148 148 158;
+    --bg: 255 255 255;
+    --bg-muted: 245 245 245;
+    --border: 220 220 220;
+    --text: 24 24 27;
+    --text-muted: 82 82 91;
     --accent: 104 122 255;
     --ring: 104 122 255;
   }
