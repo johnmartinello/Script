@@ -1,0 +1,3 @@
+- rightside Sidebar (toggable )and tooltips for tips and types of scenes e etc (e.g: when creating the location of the scene, have tooltips like INT EXT; for cuts, list of different cuts and in the sidebar appear the list with a description of the cut. E.g match cut: connects two, often disparate, scenes by matching the composition, movement, or sound of the first shot with a similar element in the second shot.)
+    - ALso with this, selection of type of beats (both GUI and keyboard shortcuts)
+    

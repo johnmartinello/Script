@@ -90,6 +90,13 @@ export const BeatBlock = Node.create<BeatOptions>({
         editor.chain().insertContentAt(pos, content).focus(pos + 1).run()
         return true
       },
+      'Mod-1': ({ editor }) => setCurrentBeatType(editor, 'scene-heading'),
+      'Mod-2': ({ editor }) => setCurrentBeatType(editor, 'action'),
+      'Mod-3': ({ editor }) => setCurrentBeatType(editor, 'character-cue'),
+      'Mod-4': ({ editor }) => setCurrentBeatType(editor, 'dialogue'),
+      'Mod-5': ({ editor }) => setCurrentBeatType(editor, 'parenthetical'),
+      'Mod-6': ({ editor }) => setCurrentBeatType(editor, 'transition'),
+      'Mod-7': ({ editor }) => setCurrentBeatType(editor, 'choice-point'),
     }
   },
 })
@@ -105,3 +112,26 @@ function nextBeatType(current: BeatType): BeatType {
       return 'action'
   }
 }
+
+function setCurrentBeatType(editor: import('@tiptap/core').Editor, type: BeatType): boolean {
+  const { state, view } = editor
+  const { selection } = state
+  const $pos = selection.$anchor
+  const node = $pos.parent
+  if (node.type.name !== 'beat') return false
+  const attrs = node.attrs ?? {}
+  const nextAttrs: Record<string, unknown> = {
+    ...attrs,
+    beatType: type,
+  }
+  if (type === 'choice-point' && !Array.isArray(attrs.options)) {
+    nextAttrs.options = []
+  }
+  if (type !== 'choice-point') {
+    nextAttrs.options = null
+  }
+  const tr = state.tr.setNodeMarkup($pos.before(), undefined, nextAttrs)
+  view.dispatch(tr)
+  return true
+}
+

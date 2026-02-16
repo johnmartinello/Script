@@ -3,8 +3,9 @@ import { Doc } from './extensions/DocumentExtension'
 import { BeatBlock } from './extensions/BeatExtension'
 import Text from '@tiptap/extension-text'
 import { useEffect, useRef } from 'react'
-import type { Beat } from '@/shared/model'
+import type { Beat, BeatType } from '@/shared/model'
 import { beatsToTiptapJson, tiptapJsonToBeats } from './beatsToTiptap'
+import { useProjectStore } from '@/renderer/store/projectStore'
 
 const extensions = [Doc, Text, BeatBlock]
 
@@ -25,6 +26,7 @@ interface ScreenplayEditorProps {
 export function ScreenplayEditor({ sceneId, beats, onBeatsChange }: ScreenplayEditorProps) {
   const updatingFromStore = useRef(false)
   const lastSceneId = useRef<string | null>(null)
+  const setActiveBeatType = useProjectStore((s) => s.setActiveBeatType)
 
   const editor = useEditor({
     extensions,
@@ -45,6 +47,22 @@ export function ScreenplayEditor({ sceneId, beats, onBeatsChange }: ScreenplayEd
       const doc = getDocContent(editor) as Parameters<typeof tiptapJsonToBeats>[0]
       const next = tiptapJsonToBeats(doc)
       onBeatsChange(next)
+    },
+    onSelectionUpdate: ({ editor }) => {
+      try {
+        const { state } = editor
+        const { selection } = state
+        const $pos = selection.$from
+        const node = $pos.parent
+        if (node.type.name === 'beat') {
+          const beatType = (node.attrs.beatType ?? 'scene-heading') as BeatType
+          setActiveBeatType(beatType)
+        } else {
+          setActiveBeatType(null)
+        }
+      } catch {
+        setActiveBeatType(null)
+      }
     },
   })
 

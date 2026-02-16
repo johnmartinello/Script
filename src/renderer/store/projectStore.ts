@@ -27,6 +27,10 @@ interface ProjectState {
   projectFilePath: string | null
   /** Dirty flag for autosave. */
   dirty: boolean
+  /** Whether the reference sidebar is visible. */
+  referenceSidebarOpen: boolean
+  /** Beat type at the current editor selection (for context-aware help). */
+  activeBeatType: Beat['type'] | null
 }
 
 interface ProjectActions {
@@ -35,6 +39,8 @@ interface ProjectActions {
   setDirty: (dirty: boolean) => void
   setSelectedSceneId: (id: string | null) => void
   setViewMode: (mode: ViewMode) => void
+  toggleReferenceSidebar: () => void
+  setActiveBeatType: (type: Beat['type'] | null) => void
 
   addScene: (title?: string) => Scene
   updateScene: (sceneId: string, patch: Partial<Pick<Scene, 'title' | 'chapterId'>>) => void
@@ -88,12 +94,17 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   viewMode: 'editor',
   projectFilePath: null,
   dirty: false,
+  referenceSidebarOpen: false,
+  activeBeatType: null,
 
   setProject: (project) => set({ project, dirty: false }),
   setProjectFilePath: (path) => set({ projectFilePath: path }),
   setDirty: (dirty) => set({ dirty }),
   setSelectedSceneId: (id) => set({ selectedSceneId: id }),
   setViewMode: (mode) => set({ viewMode: mode }),
+  toggleReferenceSidebar: () =>
+    set((state) => ({ referenceSidebarOpen: !state.referenceSidebarOpen })),
+  setActiveBeatType: (type) => set({ activeBeatType: type }),
 
   addScene: (title) => {
     const scene = createScene(title ?? 'Untitled Scene')

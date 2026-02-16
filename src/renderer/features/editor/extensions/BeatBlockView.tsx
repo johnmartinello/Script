@@ -15,6 +15,16 @@ const beatLabels: Record<BeatType, string> = {
   'set-variable': 'Set Variable',
 }
 
+const beatShortcutLabels: Partial<Record<BeatType, string>> = {
+  'scene-heading': 'Ctrl+1',
+  action: 'Ctrl+2',
+  'character-cue': 'Ctrl+3',
+  dialogue: 'Ctrl+4',
+  parenthetical: 'Ctrl+5',
+  transition: 'Ctrl+6',
+  'choice-point': 'Ctrl+7',
+}
+
 export function BeatBlockView(props: ReactNodeViewProps) {
   const { node, updateAttributes } = props
   const type = (node.attrs.beatType ?? 'scene-heading') as BeatType
@@ -39,12 +49,19 @@ export function BeatBlockView(props: ReactNodeViewProps) {
   return (
     <NodeViewWrapper as="div" data-beat="" className="my-1">
       <div className={`flex items-baseline gap-2 ${isChoice ? 'flex-col' : ''}`}>
-        <span
-          className="shrink-0 text-xs text-[rgb(var(--text-muted))] w-24"
-          contentEditable={false}
-        >
-          {beatLabels[type]}
-        </span>
+        <BeatTypeDropdown type={type} onChange={(next) => {
+          const attrs: Record<string, unknown> = {
+            ...node.attrs,
+            beatType: next,
+          }
+          if (next === 'choice-point' && !Array.isArray(options)) {
+            attrs.options = []
+          }
+          if (next !== 'choice-point') {
+            attrs.options = null
+          }
+          updateAttributes(attrs)
+        }} />
         {isChoice ? (
           <div className="flex-1 space-y-1">
             {(options ?? []).map((opt) => (
@@ -114,3 +131,45 @@ export function BeatBlockView(props: ReactNodeViewProps) {
     </NodeViewWrapper>
   )
 }
+
+function BeatTypeDropdown({
+  type,
+  onChange,
+}: {
+  type: BeatType
+  onChange: (next: BeatType) => void
+}) {
+  return (
+    <button
+      type="button"
+      className="shrink-0 text-xs text-left text-[rgb(var(--text-muted))] w-24 flex flex-col gap-0.5"
+      contentEditable={false}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        // Simple cycling order for now; GUI still shows shortcut hints.
+        const order: BeatType[] = [
+          'scene-heading',
+          'action',
+          'character-cue',
+          'dialogue',
+          'parenthetical',
+          'transition',
+          'choice-point',
+          'set-variable',
+        ]
+        const idx = order.indexOf(type)
+        const next = order[(idx + 1) % order.length]
+        onChange(next)
+      }}
+    >
+      <span>{beatLabels[type]}</span>
+      {beatShortcutLabels[type] && (
+        <span className="text-[10px] text-[rgb(var(--text-muted))]">
+          {beatShortcutLabels[type]}
+        </span>
+      )}
+    </button>
+  )
+}
+

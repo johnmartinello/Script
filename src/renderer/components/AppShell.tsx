@@ -7,9 +7,12 @@ import { GraphPanel } from '@/renderer/features/graph/GraphPanel'
 import { HelpPanel } from '@/renderer/features/help/HelpPanel'
 import { openProject, saveProject } from '@/renderer/features/persistence/projectFile'
 import { printScreenplay } from '@/renderer/features/export/screenplayToHtml'
+import { ReferenceSidebar } from '@/renderer/features/reference/ReferenceSidebar'
 
 export function AppShell() {
   const viewMode = useProjectStore((s) => s.viewMode)
+  const referenceSidebarOpen = useProjectStore((s) => s.referenceSidebarOpen)
+  const toggleReferenceSidebar = useProjectStore((s) => s.toggleReferenceSidebar)
   const { theme, setTheme } = useTheme()
   const autosaveRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -83,6 +86,17 @@ export function AppShell() {
             <option value="dark">Dark</option>
             <option value="system">System</option>
           </select>
+          <button
+            type="button"
+            onClick={toggleReferenceSidebar}
+            className={`px-2 py-1 text-sm rounded border border-border ${
+              referenceSidebarOpen
+                ? 'bg-[rgb(var(--accent))] text-white'
+                : 'bg-[rgb(var(--bg-muted))] hover:bg-[rgb(var(--border))]'
+            }`}
+          >
+            Reference
+          </button>
           <ViewModeToggles />
         </div>
       </header>
@@ -107,6 +121,7 @@ export function AppShell() {
           )}
           {viewMode === 'help' && <HelpPanel />}
         </section>
+        {viewMode !== 'help' && referenceSidebarOpen && <ReferenceSidebar />}
       </main>
     </div>
   )
