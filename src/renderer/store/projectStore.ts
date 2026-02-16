@@ -20,7 +20,8 @@ import {
 export type ViewMode = 'editor' | 'graph' | 'split' | 'help'
 
 interface ProjectState {
-  project: Project
+  /** null when no project is loaded (start screen). */
+  project: Project | null
   selectedSceneId: string | null
   viewMode: ViewMode
   /** Path to current .gscript file when loaded/saved. */
@@ -34,7 +35,8 @@ interface ProjectState {
 }
 
 interface ProjectActions {
-  setProject: (project: Project) => void
+  setProject: (project: Project | null) => void
+  updateProject: (patch: Partial<Pick<Project, 'name'>>) => void
   setProjectFilePath: (path: string | null) => void
   setDirty: (dirty: boolean) => void
   setSelectedSceneId: (id: string | null) => void
@@ -78,10 +80,16 @@ interface ProjectActions {
 }
 
 function getScene(state: ProjectState, sceneId: string): Scene | undefined {
+  if (!state.project) return undefined
   return state.project.scenes.find((s) => s.id === sceneId)
 }
 
-function replaceScene(state: ProjectState, sceneId: string, updater: (s: Scene) => Scene): Project {
+function replaceScene(
+  state: ProjectState,
+  sceneId: string,
+  updater: (s: Scene) => Scene
+): Project | null {
+  if (!state.project) return null
   return {
     ...state.project,
     scenes: state.project.scenes.map((s) => (s.id === sceneId ? updater(s) : s)),
@@ -89,7 +97,7 @@ function replaceScene(state: ProjectState, sceneId: string, updater: (s: Scene) 
 }
 
 export const useProjectStore = create<ProjectState & ProjectActions>((set, get) => ({
-  project: createEmptyProject(),
+  project: null,
   selectedSceneId: null,
   viewMode: 'editor',
   projectFilePath: null,
@@ -98,6 +106,14 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   activeBeatType: null,
 
   setProject: (project) => set({ project, dirty: false }),
+  updateProject: (patch) =>
+    set((state) => {
+      if (!state.project) return state
+      return {
+        project: { ...state.project, ...patch },
+        dirty: true,
+      }
+    }),
   setProjectFilePath: (path) => set({ projectFilePath: path }),
   setDirty: (dirty) => set({ dirty }),
   setSelectedSceneId: (id) => set({ selectedSceneId: id }),
@@ -108,19 +124,22 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
 
   addScene: (title) => {
     const scene = createScene(title ?? 'Untitled Scene')
-    set((state) => ({
-      project: {
-        ...state.project,
-        scenes: [...state.project.scenes, scene],
-        nodePositions: {
-          ...state.project.nodePositions,
-          [scene.id]: { x: 100 + state.project.scenes.length * 180, y: 100 },
+    set((state) => {
+      if (!state.project) return state
+      return {
+        project: {
+          ...state.project,
+          scenes: [...state.project.scenes, scene],
+          nodePositions: {
+            ...state.project.nodePositions,
+            [scene.id]: { x: 100 + state.project!.scenes.length * 180, y: 100 },
+          },
         },
-      },
-      selectedSceneId: scene.id,
-      viewMode: 'editor',
-      dirty: true,
-    }))
+        selectedSceneId: scene.id,
+        viewMode: 'editor',
+        dirty: true,
+      }
+    })
     return scene
   },
 
@@ -128,28 +147,30 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
     set((state) => {
       const scene = getScene(state, sceneId)
       if (!scene) return state
-      return {
-        project: replaceScene(state, sceneId, (s) => ({ ...s, ...patch })),
-        dirty: true,
-      }
+      const next = replaceScene(state, sceneId, (s) => ({ ...s, ...patch }))
+      if (!next) return state
+      return { project: next, dirty: true }
     })
   },
 
   deleteScene: (sceneId) => {
-    set((state) => ({
-      project: {
-        ...state.project,
-        scenes: state.project.scenes.filter((s) => s.id !== sceneId),
-        edges: state.project.edges.filter(
-          (e) => e.sourceSceneId !== sceneId && e.targetSceneId !== sceneId
-        ),
-        nodePositions: Object.fromEntries(
-          Object.entries(state.project.nodePositions).filter(([id]) => id !== sceneId)
-        ),
-      },
-      selectedSceneId: state.selectedSceneId === sceneId ? null : state.selectedSceneId,
-      dirty: true,
-    }))
+    set((state) => {
+      if (!state.project) return state
+      return {
+        project: {
+          ...state.project,
+          scenes: state.project.scenes.filter((s) => s.id !== sceneId),
+          edges: state.project.edges.filter(
+            (e) => e.sourceSceneId !== sceneId && e.targetSceneId !== sceneId
+          ),
+          nodePositions: Object.fromEntries(
+            Object.entries(state.project.nodePositions).filter(([id]) => id !== sceneId)
+          ),
+        },
+        selectedSceneId: state.selectedSceneId === sceneId ? null : state.selectedSceneId,
+        dirty: true,
+      }
+    })
   },
 
   getScene: (sceneId) => getScene(get(), sceneId),
@@ -159,6 +180,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
       const scene = getScene(state, sceneId)
       if (!scene) return state
       const nextProject = replaceScene(state, sceneId, () => ({ ...scene, beats }))
+      if (!nextProject) return state
       const optionIdsWithTarget = new Set<string>()
       beats.forEach((b) => {
         if (b.type === 'choice-point') {
@@ -219,10 +241,9 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
       const next = [...scene.beats]
       if (index != null) next.splice(index, 0, beat)
       else next.push(beat)
-      return {
-        project: replaceScene(state, sceneId, () => ({ ...scene, beats: next })),
-        dirty: true,
-      }
+      const nextProject = replaceScene(state, sceneId, () => ({ ...scene, beats: next }))
+      if (!nextProject) return state
+      return { project: nextProject, dirty: true }
     })
   },
 
@@ -233,17 +254,16 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
       const beats = scene.beats.map((b) =>
         b.id === beatId ? { ...b, ...patch } : b
       ) as Beat[]
-      return {
-        project: replaceScene(state, sceneId, () => ({ ...scene, beats })),
-        dirty: true,
-      }
+      const nextProject = replaceScene(state, sceneId, () => ({ ...scene, beats }))
+      if (!nextProject) return state
+      return { project: nextProject, dirty: true }
     })
   },
 
   removeBeat: (sceneId, beatId) => {
     set((state) => {
       const scene = getScene(state, sceneId)
-      if (!scene) return state
+      if (!scene || !state.project) return state
       const beat = scene.beats.find((b) => b.id === beatId)
       const optionIds =
         beat?.type === 'choice-point' ? new Set(beat.options.map((o) => o.id)) : new Set<string>()
@@ -252,6 +272,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
         (e) => e.sourceSceneId === sceneId && e.choiceOptionId != null && optionIds.has(e.choiceOptionId)
       )
       let project = replaceScene(state, sceneId, () => ({ ...scene, beats }))
+      if (!project) return state
       if (edgesToRemove.length > 0) {
         const ids = new Set(edgesToRemove.map((e) => e.id))
         project = {
@@ -270,18 +291,20 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
       const beats = [...scene.beats]
       const [removed] = beats.splice(fromIndex, 1)
       beats.splice(toIndex, 0, removed)
-      return {
-        project: replaceScene(state, sceneId, () => ({ ...scene, beats })),
-        dirty: true,
-      }
+      const nextProject = replaceScene(state, sceneId, () => ({ ...scene, beats }))
+      if (!nextProject) return state
+      return { project: nextProject, dirty: true }
     })
   },
 
   addEdge: (edge) => {
-    set((state) => ({
-      project: { ...state.project, edges: [...state.project.edges, edge] },
-      dirty: true,
-    }))
+    set((state) => {
+      if (!state.project) return state
+      return {
+        project: { ...state.project, edges: [...state.project.edges, edge] },
+        dirty: true,
+      }
+    })
   },
 
   addEdgeFromConnection: (sourceSceneId, targetSceneId) => {
@@ -298,7 +321,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
       label: '',
     })
     set((state) => {
-      const scene2 = getScene(state, sourceSceneId)!
+      if (!state.project) return state
       const nextScenes = state.project.scenes.map((s) =>
         s.id === sourceSceneId ? { ...s, beats: [...s.beats, choiceBeat] } : s
       )
@@ -315,72 +338,90 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   },
 
   updateEdge: (edgeId, patch) => {
-    set((state) => ({
-      project: {
-        ...state.project,
-        edges: state.project.edges.map((e) => (e.id === edgeId ? { ...e, ...patch } : e)),
-      },
-      dirty: true,
-    }))
+    set((state) => {
+      if (!state.project) return state
+      return {
+        project: {
+          ...state.project,
+          edges: state.project.edges.map((e) => (e.id === edgeId ? { ...e, ...patch } : e)),
+        },
+        dirty: true,
+      }
+    })
   },
 
   removeEdge: (edgeId) => {
-    set((state) => ({
-      project: {
-        ...state.project,
-        edges: state.project.edges.filter((e) => e.id !== edgeId),
-      },
-      dirty: true,
-    }))
+    set((state) => {
+      if (!state.project) return state
+      return {
+        project: {
+          ...state.project,
+          edges: state.project.edges.filter((e) => e.id !== edgeId),
+        },
+        dirty: true,
+      }
+    })
   },
 
   setNodePosition: (sceneId, position) => {
-    set((state) => ({
-      project: {
-        ...state.project,
-        nodePositions: { ...state.project.nodePositions, [sceneId]: position },
-      },
-      dirty: true,
-    }))
+    set((state) => {
+      if (!state.project) return state
+      return {
+        project: {
+          ...state.project,
+          nodePositions: { ...state.project.nodePositions, [sceneId]: position },
+        },
+        dirty: true,
+      }
+    })
   },
 
   setNodePositions: (positions) => {
-    set((state) => ({
-      project: { ...state.project, nodePositions: positions },
-      dirty: true,
-    }))
+    set((state) => {
+      if (!state.project) return state
+      return { project: { ...state.project, nodePositions: positions }, dirty: true }
+    })
   },
 
   addVariable: (variable) => {
-    set((state) => ({
-      project: {
-        ...state.project,
-        variables: [...state.project.variables, variable],
-      },
-      dirty: true,
-    }))
+    set((state) => {
+      if (!state.project) return state
+      return {
+        project: {
+          ...state.project,
+          variables: [...state.project.variables, variable],
+        },
+        dirty: true,
+      }
+    })
   },
 
   updateVariable: (variableId, patch) => {
-    set((state) => ({
-      project: {
-        ...state.project,
-        variables: state.project.variables.map((v) =>
-          v.id === variableId ? { ...v, ...patch } : v
-        ),
-      },
-      dirty: true,
-    }))
+    set((state) => {
+      if (!state.project) return state
+      return {
+        project: {
+          ...state.project,
+          variables: state.project.variables.map((v) =>
+            v.id === variableId ? { ...v, ...patch } : v
+          ),
+        },
+        dirty: true,
+      }
+    })
   },
 
   removeVariable: (variableId) => {
-    set((state) => ({
-      project: {
-        ...state.project,
-        variables: state.project.variables.filter((v) => v.id !== variableId),
-      },
-      dirty: true,
-    }))
+    set((state) => {
+      if (!state.project) return state
+      return {
+        project: {
+          ...state.project,
+          variables: state.project.variables.filter((v) => v.id !== variableId),
+        },
+        dirty: true,
+      }
+    })
   },
 
   addChoiceOption: (sceneId, beatId) => {
@@ -392,10 +433,9 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
         if (b.id !== beatId || b.type !== 'choice-point') return b
         return { ...b, options: [...b.options, option] }
       }) as Beat[]
-      return {
-        project: replaceScene(state, sceneId, () => ({ ...scene, beats })),
-        dirty: true,
-      }
+      const nextProject = replaceScene(state, sceneId, () => ({ ...scene, beats }))
+      if (!nextProject) return state
+      return { project: nextProject, dirty: true }
     })
     return option
   },
@@ -412,6 +452,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
         }
       }) as Beat[]
       let project = replaceScene(state, sceneId, () => ({ ...scene, beats }))
+      if (!project) return state
       if (patch.targetSceneId !== undefined) {
         const existing = project.edges.find(
           (e) => e.sourceSceneId === sceneId && e.choiceOptionId === optionId
@@ -448,13 +489,14 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   removeChoiceOption: (sceneId, beatId, optionId) => {
     set((state) => {
       const scene = getScene(state, sceneId)
-      if (!scene) return state
+      if (!scene || !state.project) return state
       const beats = scene.beats.map((b) => {
         if (b.id !== beatId || b.type !== 'choice-point') return b
         return { ...b, options: b.options.filter((o) => o.id !== optionId) }
       }) as Beat[]
       const edgesToRemove = state.project.edges.filter((e) => e.choiceOptionId === optionId)
       let project = replaceScene(state, sceneId, () => ({ ...scene, beats }))
+      if (!project) return state
       if (edgesToRemove.length > 0) {
         const ids = new Set(edgesToRemove.map((e) => e.id))
         project = { ...project, edges: project.edges.filter((e) => !ids.has(e.id)) }
@@ -472,3 +514,4 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
     })
   },
 }))
+

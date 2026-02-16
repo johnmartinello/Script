@@ -43,7 +43,9 @@ function projectToNodesAndEdges(): {
   edges: Edge[]
 } {
   const state = useProjectStore.getState()
-  const { scenes, edges, nodePositions } = state.project
+  const project = state.project
+  if (!project) return { nodes: [], edges: [] }
+  const { scenes, edges, nodePositions } = project
   const selectedSceneId = state.selectedSceneId
   const nodes = scenes.map((s) => {
     const pos = nodePositions[s.id] ?? { x: 0, y: 0 }
@@ -86,7 +88,7 @@ export function GraphPanel() {
 
   const addScene = useCallback(() => {
     const scene = useProjectStore.getState().addScene()
-    const pos = useProjectStore.getState().project.nodePositions[scene.id]
+    const pos = useProjectStore.getState().project?.nodePositions[scene.id]
     setNodes((nds) => [...nds, sceneToNode(scene, pos ?? { x: 100, y: 100 }, null)])
   }, [setNodes])
 

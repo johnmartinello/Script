@@ -14,11 +14,13 @@ export function useSyncGraphToStore(
   const prevPositions = useRef<Record<string, { x: number; y: number }>>({})
 
   useEffect(() => {
+    const project = useProjectStore.getState().project
+    if (!project) return
     const positions: Record<string, { x: number; y: number }> = {}
     nodes.forEach((n) => {
       positions[n.id] = n.position
     })
-    const storePositions = useProjectStore.getState().project.nodePositions
+    const storePositions = project.nodePositions
     const positionsChanged = nodes.some((n) => {
       const stored = storePositions[n.id]
       return !stored || stored.x !== n.position.x || stored.y !== n.position.y
@@ -32,7 +34,9 @@ export function useSyncGraphToStore(
   useEffect(() => {
     const unsub = useProjectStore.subscribe(() => {
       const state = useProjectStore.getState()
-      const { scenes, edges, nodePositions } = state.project
+      const project = state.project
+      if (!project) return
+      const { scenes, edges, nodePositions } = project
       const selectedSceneId = state.selectedSceneId
       const newNodes: Node<SceneNodeData, 'scene'>[] = scenes.map((s) => ({
         id: s.id,

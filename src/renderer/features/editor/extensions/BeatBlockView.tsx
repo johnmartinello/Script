@@ -30,7 +30,7 @@ export function BeatBlockView(props: ReactNodeViewProps) {
   const type = (node.attrs.beatType ?? 'scene-heading') as BeatType
   const options = (node.attrs.options ?? null) as ChoiceOption[] | null
   const isChoice = type === 'choice-point'
-  const scenes = useProjectStore((s) => s.project.scenes)
+  const scenes = useProjectStore((s) => s.project?.scenes ?? [])
   const selectedSceneId = useProjectStore((s) => s.selectedSceneId)
   const updateChoiceOption = useProjectStore((s) => s.updateChoiceOption)
   const beatId = (node.attrs.beatId ?? '') as string

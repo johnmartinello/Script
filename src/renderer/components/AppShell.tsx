@@ -22,9 +22,10 @@ export function AppShell() {
   const setProject = useProjectStore((s) => s.setProject)
   const setProjectFilePath = useProjectStore((s) => s.setProjectFilePath)
   const setDirty = useProjectStore((s) => s.setDirty)
+  const newProject = useProjectStore((s) => s.newProject)
 
   useEffect(() => {
-    if (!dirty || !projectFilePath) return
+    if (!project || !dirty || !projectFilePath) return
     if (autosaveRef.current) clearTimeout(autosaveRef.current)
     autosaveRef.current = setTimeout(() => {
       saveProject(projectFilePath, project).then((path) => {
@@ -37,7 +38,26 @@ export function AppShell() {
     }
   }, [dirty, projectFilePath, project, setDirty])
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
+        e.preventDefault()
+        useProjectStore.getState().toggleReferenceSidebar()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  if (!project) return null
+
+  const handleNewProject = () => {
+    if (dirty && !window.confirm('You have unsaved changes. Create new project anyway?')) return
+    newProject()
+  }
+
   const handleOpen = async () => {
+    if (dirty && !window.confirm('You have unsaved changes. Open other project anyway?')) return
     const result = await openProject()
     if (result) {
       setProject(result.project)
@@ -68,9 +88,17 @@ export function AppShell() {
   return (
     <div className="min-h-screen flex flex-col bg-[rgb(var(--bg))] text-[rgb(var(--text))]">
       <header className="border-b border-border px-4 py-2 flex items-center justify-between shrink-0">
-        <h1 className="text-lg font-medium">Game Script Writer</h1>
+        <h1 className="text-lg font-medium truncate min-w-0">
+          Game Script Writer
+          {project.name && (
+            <span className="text-[rgb(var(--text-muted))] font-normal ml-2">
+              — {project.name}
+            </span>
+          )}
+        </h1>
         <div className="flex items-center gap-2">
           <FileMenu
+            onNew={handleNewProject}
             onOpen={handleOpen}
             onSave={handleSave}
             onSaveAs={handleSaveAs}
@@ -89,6 +117,7 @@ export function AppShell() {
           <button
             type="button"
             onClick={toggleReferenceSidebar}
+            title="Reference (Ctrl+R)"
             className={`px-2 py-1 text-sm rounded border border-border ${
               referenceSidebarOpen
                 ? 'bg-[rgb(var(--accent))] text-white'
@@ -128,11 +157,13 @@ export function AppShell() {
 }
 
 function FileMenu({
+  onNew,
   onOpen,
   onSave,
   onSaveAs,
   onExportPdf,
 }: {
+  onNew: () => void
   onOpen: () => void
   onSave: () => void
   onSaveAs: () => void
@@ -140,6 +171,13 @@ function FileMenu({
 }) {
   return (
     <div className="flex gap-1">
+      <button
+        type="button"
+        onClick={onNew}
+        className="px-2 py-1 text-sm rounded border border-border bg-[rgb(var(--bg-muted))] hover:bg-[rgb(var(--border))]"
+      >
+        New
+      </button>
       <button
         type="button"
         onClick={onOpen}
