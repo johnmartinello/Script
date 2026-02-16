@@ -7,7 +7,7 @@ export interface TipTapBeatNode {
 }
 
 export function beatsToTiptapJson(beats: Beat[]): { type: 'doc'; content: TipTapBeatNode[] } {
-  const list = beats.length ? beats : [{ id: crypto.randomUUID(), type: 'action' as const, text: '' }]
+  const list = beats.length ? beats : [{ id: crypto.randomUUID(), type: 'scene-heading' as const, text: '' }]
   const content: TipTapBeatNode[] = list.map((b) => {
     if (b.type === 'choice-point') {
       return {
@@ -23,13 +23,13 @@ export function beatsToTiptapJson(beats: Beat[]): { type: 'doc'; content: TipTap
       content: text ? [{ type: 'text', text }] : [],
     }
   })
-  return { type: 'doc', content: content.length ? content : [{ type: 'beat', attrs: { beatType: 'action', beatId: crypto.randomUUID(), options: null }, content: [] }] }
+  return { type: 'doc', content: content.length ? content : [{ type: 'beat', attrs: { beatType: 'scene-heading', beatId: crypto.randomUUID(), options: null }, content: [] }] }
 }
 
 export function tiptapJsonToBeats(doc: { content?: { attrs?: { beatType: BeatType; beatId: string; options: unknown }; content?: { text?: string }[] }[] }): Beat[] {
   const content = doc.content ?? []
   return content.map((node) => {
-    const type = (node.attrs?.beatType ?? 'action') as BeatType
+    const type = (node.attrs?.beatType ?? 'scene-heading') as BeatType
     const id = node.attrs?.beatId ?? crypto.randomUUID()
     const text = node.content?.map((c) => c.text ?? '').join('') ?? ''
     if (type === 'choice-point') {

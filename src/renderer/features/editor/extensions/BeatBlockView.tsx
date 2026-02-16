@@ -17,7 +17,7 @@ const beatLabels: Record<BeatType, string> = {
 
 export function BeatBlockView(props: ReactNodeViewProps) {
   const { node, updateAttributes } = props
-  const type = (node.attrs.beatType ?? 'action') as BeatType
+  const type = (node.attrs.beatType ?? 'scene-heading') as BeatType
   const options = (node.attrs.options ?? null) as ChoiceOption[] | null
   const isChoice = type === 'choice-point'
   const scenes = useProjectStore((s) => s.project.scenes)

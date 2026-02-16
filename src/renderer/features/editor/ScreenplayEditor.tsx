@@ -31,7 +31,7 @@ export function ScreenplayEditor({ sceneId, beats, onBeatsChange }: ScreenplayEd
     content: beatsToTiptapJson(beats),
     editorProps: {
       attributes: {
-        class: 'screenplay-editor max-w-none min-h-[200px] p-4 focus:outline-none',
+        class: 'screenplay-editor min-h-full h-full focus:outline-none',
       },
       handleKeyDown: (_view, event) => {
         if (event.key === 'Enter' && !event.shiftKey) {
@@ -82,7 +82,7 @@ export function ScreenplayEditor({ sceneId, beats, onBeatsChange }: ScreenplayEd
   if (!editor) return <div className="p-4 text-[rgb(var(--text-muted))]">Loading editor…</div>
 
   return (
-    <div className="border border-border rounded-lg overflow-hidden bg-[rgb(var(--bg))]">
+    <div className="screenplay-page">
       <EditorContent editor={editor} />
     </div>
   )

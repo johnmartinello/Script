@@ -28,8 +28,8 @@ export const BeatBlock = Node.create<BeatOptions>({
   addAttributes() {
     return {
       beatType: {
-        default: 'action',
-        parseHTML: (el) => (el.getAttribute('data-beat-type') as BeatType) || 'action',
+        default: 'scene-heading',
+        parseHTML: (el) => (el.getAttribute('data-beat-type') as BeatType) || 'scene-heading',
         renderHTML: (attrs) => ({ 'data-beat-type': attrs.beatType }),
       },
       beatId: {
@@ -80,7 +80,7 @@ export const BeatBlock = Node.create<BeatOptions>({
         const $pos = selection.$anchor
         const node = $pos.parent
         if (node.type.name !== 'beat') return false
-        const beatType = (node.attrs.beatType ?? 'action') as BeatType
+        const beatType = (node.attrs.beatType ?? 'scene-heading') as BeatType
         const nextType = nextBeatType(beatType)
         const pos = $pos.after()
         const beatId = crypto.randomUUID()

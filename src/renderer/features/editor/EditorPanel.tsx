@@ -17,7 +17,7 @@ export function EditorPanel() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full flex-1 min-w-0">
       <div className="border-b border-border px-4 py-2 shrink-0">
         <input
           type="text"
@@ -27,7 +27,7 @@ export function EditorPanel() {
           placeholder="Scene title"
         />
       </div>
-      <div className="flex-1 min-h-0 overflow-auto p-4">
+      <div className="screenplay-editor-canvas flex-1 min-h-0 overflow-auto px-6 py-0">
         <ScreenplayEditor
           sceneId={scene.id}
           beats={scene.beats}
