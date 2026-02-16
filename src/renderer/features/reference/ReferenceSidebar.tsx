@@ -41,7 +41,7 @@ export function ReferenceSidebar() {
   const isPinned = pinnedSectionId !== null
 
   return (
-    <aside className="w-72 border-l border-border bg-[rgb(var(--bg-muted))] flex flex-col shrink-0">
+    <aside className="reference-sidebar w-72 border-l border-border bg-[rgb(var(--bg-muted))] flex flex-col shrink-0">
       <header className="px-3 py-2 border-b border-border flex items-center justify-between gap-2">
         <div className="flex flex-col">
           <span className="text-xs font-medium text-[rgb(var(--text-muted))] uppercase tracking-wide">
@@ -68,7 +68,7 @@ export function ReferenceSidebar() {
         </button>
       </header>
 
-      <div className="px-3 py-2 border-b border-border overflow-x-auto">
+      <div className="reference-sidebar-tabs px-3 py-2 border-b border-border overflow-x-auto">
         <div className="flex gap-1">
           {sections.map((section) => {
             const selected = section.id === effectiveSectionId
@@ -90,7 +90,7 @@ export function ReferenceSidebar() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto px-3 py-3 space-y-3 text-xs text-[rgb(var(--text))]">
+      <div className="reference-sidebar-content flex-1 overflow-auto px-3 py-3 space-y-3 text-xs text-[rgb(var(--text))]">
         {activeSection.summary && (
           <p className="text-[rgb(var(--text-muted))]">{activeSection.summary}</p>
         )}

@@ -94,3 +94,37 @@
 .screenplay-page .ProseMirror {
   min-height: 100%;
 }
+
+/* Reference sidebar scrollbars – match theme (light/dark) */
+.reference-sidebar {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--border)) rgb(var(--bg-muted));
+}
+
+.reference-sidebar-tabs,
+.reference-sidebar-content {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--border)) rgb(var(--bg-muted));
+}
+
+.reference-sidebar-tabs::-webkit-scrollbar,
+.reference-sidebar-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.reference-sidebar-tabs::-webkit-scrollbar-track,
+.reference-sidebar-content::-webkit-scrollbar-track {
+  background: rgb(var(--bg-muted));
+}
+
+.reference-sidebar-tabs::-webkit-scrollbar-thumb,
+.reference-sidebar-content::-webkit-scrollbar-thumb {
+  background: rgb(var(--border));
+  border-radius: 4px;
+}
+
+.reference-sidebar-tabs::-webkit-scrollbar-thumb:hover,
+.reference-sidebar-content::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--text-muted));
+}
