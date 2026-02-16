@@ -47,6 +47,20 @@ export function ScreenplayEditor({ sceneId, beats, onBeatsChange }: ScreenplayEd
       const doc = getDocContent(editor) as Parameters<typeof tiptapJsonToBeats>[0]
       const next = tiptapJsonToBeats(doc)
       onBeatsChange(next)
+      try {
+        const { state } = editor
+        const { selection } = state
+        const $pos = selection.$from
+        const node = $pos.parent
+        if (node.type.name === 'beat') {
+          const beatType = (node.attrs.beatType ?? 'scene-heading') as BeatType
+          setActiveBeatType(beatType)
+        } else {
+          setActiveBeatType(null)
+        }
+      } catch {
+        setActiveBeatType(null)
+      }
     },
     onSelectionUpdate: ({ editor }) => {
       try {

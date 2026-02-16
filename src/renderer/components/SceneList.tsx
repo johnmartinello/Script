@@ -19,7 +19,7 @@ export function SceneList() {
           + New
         </button>
       </div>
-      <ul className="flex-1 overflow-auto p-1">
+      <ul className="scene-list-scrollbar flex-1 overflow-auto p-1">
         {scenes.length === 0 && (
           <li className="text-sm text-[rgb(var(--text-muted))] p-2">No scenes yet.</li>
         )}
