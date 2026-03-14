@@ -86,8 +86,16 @@ export function SceneList() {
                   ? 'bg-[rgb(var(--accent))] text-white'
                   : 'hover:bg-[rgb(var(--border))]'
               }`}
+              title={s.title || 'Untitled'}
             >
-              {s.title || 'Untitled'}
+              {s.displayNumber ? (
+                <>
+                  <span className="text-[rgb(var(--text-muted))] shrink-0">{s.displayNumber}</span>
+                  <span className="ml-1.5">{s.title || 'Untitled'}</span>
+                </>
+              ) : (
+                s.title || 'Untitled'
+              )}
             </button>
           </li>
         ))}

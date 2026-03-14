@@ -86,6 +86,10 @@ export interface Scene {
   beats: Beat[]
   /** Optional chapter/act id for grouping. */
   chapterId: string | null
+  /** Optional display number for UI/export (e.g. "2.b"). */
+  displayNumber?: string | null
+  /** When scene was created from a scene-heading beat, id of that beat. */
+  sourceBeatId?: string | null
 }
 
 export interface GraphNodePosition {

@@ -16,6 +16,7 @@ import {
   createChoiceOption,
   newBeatId,
 } from '@/shared/model'
+import { withRecomputedSceneNumbers } from '@/shared/sceneNumbering'
 
 export type ViewMode = 'editor' | 'graph' | 'split' | 'help'
 
@@ -48,9 +49,11 @@ interface ProjectActions {
   setActiveBeatId: (id: string | null) => void
 
   addScene: (title?: string) => Scene
-  updateScene: (sceneId: string, patch: Partial<Pick<Scene, 'title' | 'chapterId'>>) => void
+  updateScene: (sceneId: string, patch: Partial<Pick<Scene, 'title' | 'chapterId' | 'sourceBeatId'>>) => void
   deleteScene: (sceneId: string) => void
   getScene: (sceneId: string) => Scene | undefined
+  /** Create/update scenes from scene-heading beats in document order. First heading = owner scene; rest create or update by sourceBeatId. */
+  syncScenesFromHeadings: (ownerSceneId: string, beats: Beat[]) => void
 
   setBeats: (sceneId: string, beats: Beat[]) => void
   addBeat: (sceneId: string, beat: Beat, index?: number) => void
@@ -99,6 +102,10 @@ function replaceScene(
   }
 }
 
+function applySceneNumbers(project: Project | null): Project | null {
+  return project ? withRecomputedSceneNumbers(project) : null
+}
+
 export const useProjectStore = create<ProjectState & ProjectActions>((set, get) => ({
   project: null,
   selectedSceneId: null,
@@ -109,7 +116,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   activeBeatType: null,
   activeBeatId: null,
 
-  setProject: (project) => set({ project, dirty: false }),
+  setProject: (project) => set({ project: applySceneNumbers(project), dirty: false }),
   updateProject: (patch) =>
     set((state) => {
       if (!state.project) return state
@@ -131,15 +138,16 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
     const scene = createScene(title ?? 'Untitled Scene')
     set((state) => {
       if (!state.project) return state
-      return {
-        project: {
-          ...state.project,
-          scenes: [...state.project.scenes, scene],
-          nodePositions: {
-            ...state.project.nodePositions,
-            [scene.id]: { x: 100 + state.project!.scenes.length * 180, y: 100 },
-          },
+      const next = {
+        ...state.project,
+        scenes: [...state.project.scenes, scene],
+        nodePositions: {
+          ...state.project.nodePositions,
+          [scene.id]: { x: 100 + state.project!.scenes.length * 180, y: 100 },
         },
+      }
+      return {
+        project: applySceneNumbers(next),
         selectedSceneId: scene.id,
         viewMode: 'editor',
         dirty: true,
@@ -154,24 +162,25 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
       if (!scene) return state
       const next = replaceScene(state, sceneId, (s) => ({ ...s, ...patch }))
       if (!next) return state
-      return { project: next, dirty: true }
+      return { project: applySceneNumbers(next), dirty: true }
     })
   },
 
   deleteScene: (sceneId) => {
     set((state) => {
       if (!state.project) return state
+      const next = {
+        ...state.project,
+        scenes: state.project.scenes.filter((s) => s.id !== sceneId),
+        edges: state.project.edges.filter(
+          (e) => e.sourceSceneId !== sceneId && e.targetSceneId !== sceneId
+        ),
+        nodePositions: Object.fromEntries(
+          Object.entries(state.project.nodePositions).filter(([id]) => id !== sceneId)
+        ),
+      }
       return {
-        project: {
-          ...state.project,
-          scenes: state.project.scenes.filter((s) => s.id !== sceneId),
-          edges: state.project.edges.filter(
-            (e) => e.sourceSceneId !== sceneId && e.targetSceneId !== sceneId
-          ),
-          nodePositions: Object.fromEntries(
-            Object.entries(state.project.nodePositions).filter(([id]) => id !== sceneId)
-          ),
-        },
+        project: applySceneNumbers(next),
         selectedSceneId: state.selectedSceneId === sceneId ? null : state.selectedSceneId,
         dirty: true,
       }
@@ -179,6 +188,27 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   },
 
   getScene: (sceneId) => getScene(get(), sceneId),
+
+  syncScenesFromHeadings: (ownerSceneId, beats) => {
+    const headings = beats
+      .filter((b): b is Beat & { type: 'scene-heading'; text: string } => b.type === 'scene-heading')
+      .map((b) => ({ beatId: b.id, text: b.text?.trim() || 'Untitled Scene' }))
+    if (headings.length === 0) return
+    const store = get()
+    if (!store.project) return
+    store.updateScene(ownerSceneId, { title: headings[0].text, sourceBeatId: headings[0].beatId })
+    for (let i = 1; i < headings.length; i++) {
+      const { beatId, text } = headings[i]
+      const project = get().project
+      const existing = project?.scenes.find((s) => s.sourceBeatId === beatId)
+      if (existing) {
+        get().updateScene(existing.id, { title: text })
+      } else {
+        const scene = get().addScene(text)
+        get().updateScene(scene.id, { sourceBeatId: beatId })
+      }
+    }
+  },
 
   setBeats: (sceneId, beats) => {
     set((state) => {
@@ -233,7 +263,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
       nextEdges = nextEdges.map((e) => (edgeUpdates[e.id] ? { ...e, ...edgeUpdates[e.id] } : e))
       nextEdges = [...nextEdges, ...toAdd]
       return {
-        project: { ...nextProject, edges: nextEdges },
+        project: applySceneNumbers({ ...nextProject, edges: nextEdges }),
         dirty: true,
       }
     })
@@ -248,7 +278,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
       else next.push(beat)
       const nextProject = replaceScene(state, sceneId, () => ({ ...scene, beats: next }))
       if (!nextProject) return state
-      return { project: nextProject, dirty: true }
+      return { project: applySceneNumbers(nextProject), dirty: true }
     })
   },
 
@@ -261,7 +291,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
       ) as Beat[]
       const nextProject = replaceScene(state, sceneId, () => ({ ...scene, beats }))
       if (!nextProject) return state
-      return { project: nextProject, dirty: true }
+      return { project: applySceneNumbers(nextProject), dirty: true }
     })
   },
 
@@ -285,7 +315,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
           edges: project.edges.filter((e) => !ids.has(e.id)),
         }
       }
-      return { project, dirty: true }
+      return { project: applySceneNumbers(project), dirty: true }
     })
   },
 
@@ -298,17 +328,15 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
       beats.splice(toIndex, 0, removed)
       const nextProject = replaceScene(state, sceneId, () => ({ ...scene, beats }))
       if (!nextProject) return state
-      return { project: nextProject, dirty: true }
+      return { project: applySceneNumbers(nextProject), dirty: true }
     })
   },
 
   addEdge: (edge) => {
     set((state) => {
       if (!state.project) return state
-      return {
-        project: { ...state.project, edges: [...state.project.edges, edge] },
-        dirty: true,
-      }
+      const next = { ...state.project, edges: [...state.project.edges, edge] }
+      return { project: applySceneNumbers(next), dirty: true }
     })
   },
 
@@ -330,14 +358,12 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
       const nextScenes = state.project.scenes.map((s) =>
         s.id === sourceSceneId ? { ...s, beats: [...s.beats, choiceBeat] } : s
       )
-      return {
-        project: {
-          ...state.project,
-          scenes: nextScenes,
-          edges: [...state.project.edges, edge],
-        },
-        dirty: true,
+      const next = {
+        ...state.project,
+        scenes: nextScenes,
+        edges: [...state.project.edges, edge],
       }
+      return { project: applySceneNumbers(next), dirty: true }
     })
     return edge
   },
@@ -345,26 +371,22 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   updateEdge: (edgeId, patch) => {
     set((state) => {
       if (!state.project) return state
-      return {
-        project: {
-          ...state.project,
-          edges: state.project.edges.map((e) => (e.id === edgeId ? { ...e, ...patch } : e)),
-        },
-        dirty: true,
+      const next = {
+        ...state.project,
+        edges: state.project.edges.map((e) => (e.id === edgeId ? { ...e, ...patch } : e)),
       }
+      return { project: applySceneNumbers(next), dirty: true }
     })
   },
 
   removeEdge: (edgeId) => {
     set((state) => {
       if (!state.project) return state
-      return {
-        project: {
-          ...state.project,
-          edges: state.project.edges.filter((e) => e.id !== edgeId),
-        },
-        dirty: true,
+      const next = {
+        ...state.project,
+        edges: state.project.edges.filter((e) => e.id !== edgeId),
       }
+      return { project: applySceneNumbers(next), dirty: true }
     })
   },
 
@@ -440,7 +462,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
       }) as Beat[]
       const nextProject = replaceScene(state, sceneId, () => ({ ...scene, beats }))
       if (!nextProject) return state
-      return { project: nextProject, dirty: true }
+      return { project: applySceneNumbers(nextProject), dirty: true }
     })
     return option
   },
@@ -487,7 +509,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
           }
         }
       }
-      return { project, dirty: true }
+      return { project: applySceneNumbers(project), dirty: true }
     })
   },
 
@@ -506,7 +528,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
         const ids = new Set(edgesToRemove.map((e) => e.id))
         project = { ...project, edges: project.edges.filter((e) => !ids.has(e.id)) }
       }
-      return { project, dirty: true }
+      return { project: applySceneNumbers(project), dirty: true }
     })
   },
 

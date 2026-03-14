@@ -5,6 +5,7 @@ export function EditorPanel() {
   const selectedSceneId = useProjectStore((s) => s.selectedSceneId)
   const getScene = useProjectStore((s) => s.getScene)
   const setBeats = useProjectStore((s) => s.setBeats)
+  const syncScenesFromHeadings = useProjectStore((s) => s.syncScenesFromHeadings)
 
   const scene = selectedSceneId ? getScene(selectedSceneId) : null
 
@@ -18,7 +19,10 @@ export function EditorPanel() {
 
   return (
     <div className="flex flex-col h-full flex-1 min-w-0">
-      <div className="border-b border-border px-4 py-2 shrink-0">
+      <div className="border-b border-border px-4 py-2 shrink-0 flex items-center gap-2">
+        {scene.displayNumber && (
+          <span className="text-sm text-[rgb(var(--text-muted))] shrink-0">{scene.displayNumber}</span>
+        )}
         <input
           type="text"
           value={scene.title}
@@ -31,7 +35,10 @@ export function EditorPanel() {
         <ScreenplayEditor
           sceneId={scene.id}
           beats={scene.beats}
-          onBeatsChange={(beats) => setBeats(scene.id, beats)}
+          onBeatsChange={(beats) => {
+          setBeats(scene.id, beats)
+          syncScenesFromHeadings(scene.id, beats)
+        }}
         />
       </div>
     </div>

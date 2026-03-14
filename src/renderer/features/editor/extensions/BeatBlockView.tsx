@@ -37,7 +37,7 @@ export function BeatBlockView(props: ReactNodeViewProps) {
   const beatId = (node.attrs.beatId ?? '') as string
   const isActiveBeat = activeBeatId === beatId
 
-  const className =
+  const contentClassName =
     type === 'scene-heading'
       ? 'font-bold uppercase text-sm text-[rgb(var(--text-muted))]'
       : type === 'character-cue'
@@ -47,7 +47,18 @@ export function BeatBlockView(props: ReactNodeViewProps) {
           : type === 'choice-point'
             ? 'border border-[rgb(var(--border))] rounded p-2 bg-[rgb(var(--bg-muted))]'
             : ''
-// Beat spacing margin
+
+  const contentWrapperClassName =
+    type === 'character-cue'
+      ? 'flex-1 min-w-0 flex justify-center'
+      : type === 'dialogue'
+        ? 'flex-1 min-w-0 pl-8'
+        : type === 'parenthetical'
+          ? 'flex-1 min-w-0 pl-12'
+          : type === 'transition'
+            ? 'flex-1 min-w-0 flex justify-end'
+            : 'flex-1 min-w-0'
+
   return (
     <NodeViewWrapper as="div" data-beat="" className="my-3">
       <div className={`flex items-baseline gap-2 ${isChoice ? 'flex-col' : ''}`}>
@@ -127,7 +138,9 @@ export function BeatBlockView(props: ReactNodeViewProps) {
             </button>
           </div>
         ) : (
-          <NodeViewContent className={`flex-1 min-w-0 ${className}`} />
+          <div className={contentWrapperClassName}>
+            <NodeViewContent className={`min-w-0 ${contentClassName}`} />
+          </div>
         )}
       </div>
     </NodeViewWrapper>

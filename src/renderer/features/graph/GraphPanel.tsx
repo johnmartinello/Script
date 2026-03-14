@@ -25,7 +25,11 @@ const nodeTypes: NodeTypes = {
   scene: SceneNode,
 }
 
-function sceneToNode(s: { id: string; title: string }, pos: { x: number; y: number }, selectedSceneId: string | null): Node<SceneNodeData, 'scene'> {
+function sceneToNode(
+  s: { id: string; title: string; displayNumber?: string | null },
+  pos: { x: number; y: number },
+  selectedSceneId: string | null
+): Node<SceneNodeData, 'scene'> {
   return {
     id: s.id,
     type: 'scene',
@@ -33,6 +37,7 @@ function sceneToNode(s: { id: string; title: string }, pos: { x: number; y: numb
     data: {
       sceneId: s.id,
       title: s.title,
+      displayNumber: s.displayNumber ?? undefined,
       selected: selectedSceneId === s.id,
     },
   }

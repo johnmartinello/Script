@@ -45,6 +45,7 @@ export function useSyncGraphToStore(
         data: {
           sceneId: s.id,
           title: s.title,
+          displayNumber: s.displayNumber ?? undefined,
           selected: selectedSceneId === s.id,
         },
       }))
