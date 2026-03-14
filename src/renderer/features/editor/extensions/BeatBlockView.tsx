@@ -31,10 +31,11 @@ export function BeatBlockView(props: ReactNodeViewProps) {
   const options = (node.attrs.options ?? null) as ChoiceOption[] | null
   const isChoice = type === 'choice-point'
   const scenes = useProjectStore((s) => s.project?.scenes ?? [])
-  const selectedSceneId = useProjectStore((s) => s.selectedSceneId)
+  const getSceneIdByBeatId = useProjectStore((s) => s.getSceneIdByBeatId)
   const activeBeatId = useProjectStore((s) => s.activeBeatId)
   const updateChoiceOption = useProjectStore((s) => s.updateChoiceOption)
   const beatId = (node.attrs.beatId ?? '') as string
+  const sceneId = getSceneIdByBeatId(beatId)
   const isActiveBeat = activeBeatId === beatId
 
   const contentClassName =
@@ -60,7 +61,7 @@ export function BeatBlockView(props: ReactNodeViewProps) {
             : 'flex-1 min-w-0'
 
   return (
-    <NodeViewWrapper as="div" data-beat="" className="my-3">
+    <NodeViewWrapper as="div" data-beat="" data-beat-id={beatId} className="my-3">
       <div className={`flex items-baseline gap-2 ${isChoice ? 'flex-col' : ''}`}>
         <BeatTypeDropdown type={type} showShortcut={isActiveBeat} onChange={(next) => {
           const attrs: Record<string, unknown> = {
@@ -100,8 +101,8 @@ export function BeatBlockView(props: ReactNodeViewProps) {
                       o.id === opt.id ? { ...o, targetSceneId: val } : o
                     )
                     updateAttributes({ options: next })
-                    if (selectedSceneId) {
-                      updateChoiceOption(selectedSceneId, beatId, opt.id, {
+                    if (sceneId) {
+                      updateChoiceOption(sceneId, beatId, opt.id, {
                         targetSceneId: val,
                         label: opt.label,
                       })

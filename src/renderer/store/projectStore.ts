@@ -52,8 +52,14 @@ interface ProjectActions {
   updateScene: (sceneId: string, patch: Partial<Pick<Scene, 'title' | 'chapterId' | 'sourceBeatId'>>) => void
   deleteScene: (sceneId: string) => void
   getScene: (sceneId: string) => Scene | undefined
+  /** Scene id that contains the beat with the given id (for universal document view). */
+  getSceneIdByBeatId: (beatId: string) => string | undefined
+  /** All beats from all scenes concatenated in document order (for universal document view). */
+  getAllBeatsFlat: () => Beat[]
   /** Create/update scenes from scene-heading beats in document order. First heading = owner scene; rest create or update by sourceBeatId. */
   syncScenesFromHeadings: (ownerSceneId: string, beats: Beat[]) => void
+  /** Sync flat document beats back to scenes: split by scene-heading, match/create/delete scenes. */
+  syncDocumentToScenes: (allBeats: Beat[]) => void
 
   setBeats: (sceneId: string, beats: Beat[]) => void
   addBeat: (sceneId: string, beat: Beat, index?: number) => void
@@ -135,7 +141,13 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   setActiveBeatId: (id) => set({ activeBeatId: id }),
 
   addScene: (title) => {
-    const scene = createScene(title ?? 'Untitled Scene')
+    const headingBeatId = newBeatId()
+    const headingText = title?.trim() || 'Untitled Scene'
+    const scene: Scene = {
+      ...createScene(headingText),
+      beats: [{ id: headingBeatId, type: 'scene-heading', text: headingText }],
+      sourceBeatId: headingBeatId,
+    }
     set((state) => {
       if (!state.project) return state
       const next = {
@@ -189,6 +201,18 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
 
   getScene: (sceneId) => getScene(get(), sceneId),
 
+  getSceneIdByBeatId: (beatId) => {
+    const state = get()
+    if (!state.project) return undefined
+    return state.project.scenes.find((s) => s.beats.some((b) => b.id === beatId))?.id
+  },
+
+  getAllBeatsFlat: () => {
+    const state = get()
+    if (!state.project) return []
+    return state.project.scenes.flatMap((s) => s.beats)
+  },
+
   syncScenesFromHeadings: (ownerSceneId, beats) => {
     const headings = beats
       .filter((b): b is Beat & { type: 'scene-heading'; text: string } => b.type === 'scene-heading')
@@ -208,6 +232,85 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
         get().updateScene(scene.id, { sourceBeatId: beatId })
       }
     }
+  },
+
+  syncDocumentToScenes: (allBeats) => {
+    set((state) => {
+      if (!state.project) return state
+      const headings = allBeats
+        .filter((b): b is Beat & { type: 'scene-heading'; text: string } => b.type === 'scene-heading')
+      if (headings.length === 0) {
+        const first = state.project.scenes[0]
+        if (!first) return state
+        const beats = allBeats.length ? allBeats : [{ id: newBeatId(), type: 'scene-heading' as const, text: '' }]
+        const firstHeading = beats.find((b) => b.type === 'scene-heading')
+        const nextProject = replaceScene(state, first.id, () => ({
+          ...first,
+          beats,
+          title: 'Untitled Scene',
+          sourceBeatId: firstHeading?.id ?? null,
+        }))
+        if (!nextProject) return state
+        return { project: applySceneNumbers(nextProject), dirty: true }
+      }
+      const headingBeatIds = new Set(headings.map((h) => h.id))
+      const headingIndices = allBeats
+        .map((b, i) => (b.type === 'scene-heading' ? i : -1))
+        .filter((i) => i >= 0)
+      const groups: { headingBeatId: string; title: string; beats: Beat[] }[] = headingIndices.map(
+        (startIdx, k) => {
+          const endIdx = headingIndices[k + 1] ?? allBeats.length
+          const headingBeat = allBeats[startIdx] as Beat & { type: 'scene-heading'; text: string }
+          const beats = k === 0 ? allBeats.slice(0, endIdx) : allBeats.slice(startIdx, endIdx)
+          return {
+            headingBeatId: headingBeat.id,
+            title: headingBeat.text?.trim() || 'Untitled Scene',
+            beats,
+          }
+        }
+      )
+      const existingBySourceBeatId = new Map<string, Scene>()
+      state.project.scenes.forEach((s) => {
+        if (s.sourceBeatId) existingBySourceBeatId.set(s.sourceBeatId, s)
+      })
+      const nextScenes: Scene[] = []
+      for (const g of groups) {
+        const existing = existingBySourceBeatId.get(g.headingBeatId)
+        const stillExists = existing && headingBeatIds.has(g.headingBeatId)
+        if (existing && stillExists) {
+          nextScenes.push({ ...existing, title: g.title, beats: g.beats, sourceBeatId: g.headingBeatId })
+        } else {
+          const scene = createScene(g.title)
+          nextScenes.push({ ...scene, beats: g.beats, sourceBeatId: g.headingBeatId })
+        }
+      }
+      const keepIds = new Set(nextScenes.map((s) => s.id))
+      const removeIds = state.project.scenes.filter((s) => !keepIds.has(s.id)).map((s) => s.id)
+      const nextNodePositions = { ...state.project.nodePositions }
+      nextScenes.forEach((s, i) => {
+        if (!nextNodePositions[s.id]) {
+          nextNodePositions[s.id] = { x: 100 + i * 180, y: 100 }
+        }
+      })
+      removeIds.forEach((id) => delete nextNodePositions[id])
+      const nextEdges = state.project.edges.filter(
+        (e) => keepIds.has(e.sourceSceneId) && keepIds.has(e.targetSceneId)
+      )
+      const nextSelected =
+        state.selectedSceneId && keepIds.has(state.selectedSceneId)
+          ? state.selectedSceneId
+          : nextScenes[0]?.id ?? null
+      return {
+        project: applySceneNumbers({
+          ...state.project,
+          scenes: nextScenes,
+          edges: nextEdges,
+          nodePositions: nextNodePositions,
+        }),
+        selectedSceneId: nextSelected,
+        dirty: true,
+      }
+    })
   },
 
   setBeats: (sceneId, beats) => {

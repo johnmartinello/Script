@@ -43,14 +43,29 @@ function syncActiveBeatFromSelection(
 }
 
 interface ScreenplayEditorProps {
-  sceneId: string
   beats: Beat[]
   onBeatsChange: (beats: Beat[]) => void
 }
 
-export function ScreenplayEditor({ sceneId, beats, onBeatsChange }: ScreenplayEditorProps) {
+function beatsEqual(a: Beat[], b: Beat[]): boolean {
+  if (a.length !== b.length) return false
+  return a.every((c, i) => {
+    const beat = b[i]
+    if (!beat) return false
+    if (c.type !== beat.type || c.id !== beat.id) return false
+    if ('text' in c && 'text' in beat) return c.text === beat.text
+    if (c.type === 'choice-point' && beat.type === 'choice-point') {
+      return (
+        c.options.length === beat.options.length &&
+        c.options.every((o, j) => o.id === beat.options[j]?.id && o.label === beat.options[j]?.label)
+      )
+    }
+    return true
+  })
+}
+
+export function ScreenplayEditor({ beats, onBeatsChange }: ScreenplayEditorProps) {
   const updatingFromStore = useRef(false)
-  const lastSceneId = useRef<string | null>(null)
   const setActiveBeatType = useProjectStore((s) => s.setActiveBeatType)
   const setActiveBeatId = useProjectStore((s) => s.setActiveBeatId)
 
@@ -80,7 +95,6 @@ export function ScreenplayEditor({ sceneId, beats, onBeatsChange }: ScreenplayEd
     },
   })
 
-  // Sync active beat when editor first mounts so the first beat shows the shortcut without user interaction
   useEffect(() => {
     if (!editor) return
     syncActiveBeatFromSelection(editor, setActiveBeatType, setActiveBeatId)
@@ -88,36 +102,13 @@ export function ScreenplayEditor({ sceneId, beats, onBeatsChange }: ScreenplayEd
 
   useEffect(() => {
     if (!editor) return
-    if (lastSceneId.current !== sceneId) {
-      lastSceneId.current = sceneId
-      updatingFromStore.current = true
-      editor.commands.setContent(beatsToTiptapJson(beats))
-      updatingFromStore.current = false
-      syncActiveBeatFromSelection(editor, setActiveBeatType, setActiveBeatId)
-      return
-    }
     const current = tiptapJsonToBeats(getDocContent(editor) as Parameters<typeof tiptapJsonToBeats>[0])
-    const same =
-      current.length === beats.length &&
-      current.every((c, i) => {
-        const b = beats[i]
-        if (!b) return false
-        if (c.type !== b.type || c.id !== b.id) return false
-        if ('text' in c && 'text' in b) return c.text === b.text
-        if (c.type === 'choice-point' && b.type === 'choice-point') {
-          return (
-            c.options.length === b.options.length &&
-            c.options.every((o, j) => o.id === b.options[j]?.id && o.label === b.options[j]?.label)
-          )
-        }
-        return true
-      })
-    if (same) return
+    if (beatsEqual(current, beats)) return
     updatingFromStore.current = true
     editor.commands.setContent(beatsToTiptapJson(beats))
     updatingFromStore.current = false
     syncActiveBeatFromSelection(editor, setActiveBeatType, setActiveBeatId)
-  }, [sceneId, beats, editor, setActiveBeatType, setActiveBeatId])
+  }, [beats, editor, setActiveBeatType, setActiveBeatId])
 
   if (!editor) return <div className="p-4 text-[rgb(var(--text-muted))]">Loading editor…</div>
 
