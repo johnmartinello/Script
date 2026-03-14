@@ -67,11 +67,59 @@ export function HelpPanel() {
         </section>
 
         <section className="border border-border rounded-lg p-4">
+          <h3 className="font-medium mb-3">Keyboard Shortcuts</h3>
+          <p className="text-sm text-[rgb(var(--text-muted))] mb-3">
+            Use <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Ctrl</kbd> on Windows/Linux or <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Cmd</kbd> on Mac for modifier keys.
+          </p>
+          <h4 className="text-sm font-medium mt-3 mb-2">Global</h4>
+          <ul className="space-y-2 text-sm">
+            <li>
+              <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Ctrl+R</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Cmd+R</kbd> - Toggle Reference sidebar
+            </li>
+          </ul>
+          <h4 className="text-sm font-medium mt-3 mb-2">Editor (cursor in a beat)</h4>
+          <ul className="space-y-2 text-sm">
+            <li>
+              <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Enter</kbd> - Insert a new beat below (type follows current beat)
+            </li>
+            <li>
+              <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Ctrl+1</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Cmd+1</kbd> - Scene heading
+            </li>
+            <li>
+              <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Ctrl+2</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Cmd+2</kbd> - Action
+            </li>
+            <li>
+              <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Ctrl+3</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Cmd+3</kbd> - Character cue
+            </li>
+            <li>
+              <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Ctrl+4</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Cmd+4</kbd> - Dialogue
+            </li>
+            <li>
+              <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Ctrl+5</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Cmd+5</kbd> - Parenthetical
+            </li>
+            <li>
+              <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Ctrl+6</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Cmd+6</kbd> - Transition
+            </li>
+            <li>
+              <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Ctrl+7</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Cmd+7</kbd> - Choice point
+            </li>
+          </ul>
+          <h4 className="text-sm font-medium mt-3 mb-2">Sidebar (editing project name)</h4>
+          <ul className="space-y-2 text-sm">
+            <li>
+              <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Enter</kbd> - Save project name
+            </li>
+            <li>
+              <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Escape</kbd> - Cancel edit and revert
+            </li>
+          </ul>
+        </section>
+
+        <section className="border border-border rounded-lg p-4">
           <h3 className="font-medium mb-3">Editor Commands</h3>
           <ul className="space-y-2 text-sm">
             <li>
-              <span className="font-medium">Enter</span> - Insert a new beat under the current
-              beat.
+              Use <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Enter</kbd> to insert a new beat; use <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Ctrl+1</kbd>–<kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">7</kbd> to change the current beat type (see shortcuts above).
             </li>
             <li>
               <span className="font-medium">Choice Point</span> - Add options and assign target
