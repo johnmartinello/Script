@@ -30,8 +30,8 @@ export function SceneList() {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="p-2 border-b border-border">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden">
+      <div className="p-2 border-b border-border shrink-0">
         {editing ? (
           <input
             ref={inputRef}
@@ -61,7 +61,7 @@ export function SceneList() {
           </button>
         )}
       </div>
-      <div className="p-2 border-b border-border flex items-center justify-between">
+      <div className="p-2 border-b border-border flex items-center justify-between shrink-0">
         <span className="text-sm font-medium text-[rgb(var(--text-muted))]">Scenes</span>
         <button
           type="button"
@@ -72,7 +72,7 @@ export function SceneList() {
           + New
         </button>
       </div>
-      <ul className="scene-list-scrollbar flex-1 overflow-auto p-1">
+      <ul className="scene-list-scrollbar flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-1">
         {scenes.length === 0 && (
           <li className="text-sm text-[rgb(var(--text-muted))] p-2">No scenes yet.</li>
         )}

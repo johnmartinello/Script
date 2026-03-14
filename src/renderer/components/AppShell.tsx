@@ -86,7 +86,7 @@ export function AppShell() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[rgb(var(--bg))] text-[rgb(var(--text))]">
+    <div className="h-screen flex flex-col overflow-hidden bg-[rgb(var(--bg))] text-[rgb(var(--text))]">
       <header className="border-b border-border px-4 py-2 flex items-center justify-between shrink-0">
         <h1 className="text-lg font-medium truncate min-w-0">
           Game Script Writer
@@ -131,7 +131,7 @@ export function AppShell() {
       </header>
       <main className="flex-1 flex min-h-0 overflow-hidden">
         {viewMode !== 'help' && (
-          <aside className="w-56 border-r border-border bg-[rgb(var(--bg-muted))] flex flex-col shrink-0">
+          <aside className="w-56 h-full min-h-0 border-r border-border bg-[rgb(var(--bg-muted))] flex flex-col shrink-0 overflow-hidden">
             <SceneList />
           </aside>
         )}
