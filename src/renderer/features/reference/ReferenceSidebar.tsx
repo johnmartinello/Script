@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useProjectStore } from '@/renderer/store/projectStore'
 import type { BeatType } from '@/shared/model'
 import { referenceSections, type ReferenceSectionId } from './referenceData'
@@ -39,6 +39,29 @@ export function ReferenceSidebar() {
   const activeSection = sections.find((s) => s.id === effectiveSectionId) ?? sections[0]
 
   const isPinned = pinnedSectionId !== null
+  const tabsRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = tabsRef.current
+    if (!el) return
+    function onWheel(e: WheelEvent) {
+      if (!el) return
+      // If there's already horizontal movement (trackpad/side-scroll), let the
+      // browser handle it natively — just prevent bubbling to a parent scroller.
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+        e.preventDefault()
+        el.scrollLeft += e.deltaX
+        return
+      }
+      // Vertical scroll: redirect to horizontal.
+      if (e.deltaY !== 0) {
+        e.preventDefault()
+        el.scrollLeft += e.deltaY
+      }
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
 
   return (
     <aside className="reference-sidebar w-72 border-l border-border bg-[rgb(var(--bg-muted))] flex flex-col shrink-0">
@@ -68,7 +91,10 @@ export function ReferenceSidebar() {
         </button>
       </header>
 
-      <div className="reference-sidebar-tabs px-3 py-2 border-b border-border overflow-x-auto">
+      <div
+        ref={tabsRef}
+        className="reference-sidebar-tabs px-3 py-2 border-b border-border overflow-x-auto"
+      >
         <div className="flex gap-1">
           {sections.map((section) => {
             const selected = section.id === effectiveSectionId
