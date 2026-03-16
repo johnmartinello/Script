@@ -1,11 +1,13 @@
-import type { PointerEvent } from 'react'
+import type { ClipboardEvent, PointerEvent } from 'react'
 import type { BoardTextItem } from '@/shared/model'
+import { getImageFileFromClipboard } from './imageUtils'
 
 interface BoardItemTextProps {
   item: BoardTextItem
   onPointerDown: (event: PointerEvent<HTMLDivElement>) => void
   onResizeStart: (event: PointerEvent<HTMLButtonElement>) => void
   onTextChange: (text: string) => void
+  onPasteImage: (file: File) => Promise<void>
   onDelete: () => void
 }
 
@@ -14,8 +16,16 @@ export function BoardItemText({
   onPointerDown,
   onResizeStart,
   onTextChange,
+  onPasteImage,
   onDelete,
 }: BoardItemTextProps) {
+  const handleTextareaPaste = async (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const imageFile = getImageFileFromClipboard(event.nativeEvent)
+    if (!imageFile) return
+    event.preventDefault()
+    await onPasteImage(imageFile)
+  }
+
   return (
     <div
       className="w-full h-full rounded-md border border-border bg-[rgb(var(--bg))] shadow-md overflow-hidden"
@@ -38,6 +48,7 @@ export function BoardItemText({
         value={item.text}
         onChange={(event) => onTextChange(event.target.value)}
         onPointerDown={(event) => event.stopPropagation()}
+        onPaste={handleTextareaPaste}
         className="w-full h-[calc(100%-1.75rem)] resize-none bg-transparent p-2 text-sm outline-none"
         placeholder="Write a note..."
       />

@@ -154,6 +154,7 @@ export function BoardsPanel() {
               boardKey={activeBoardKey}
               board={activeBoard}
               onViewportChange={(viewport) => setBoardViewport(activeBoardKey, viewport)}
+              onAddText={(params) => addTextBoardItem(activeBoardKey, params)}
               onUpdateItem={(itemId, patch) => updateBoardItem(activeBoardKey, itemId, patch)}
               onRemoveItem={(itemId) => removeBoardItem(activeBoardKey, itemId)}
               onAddImage={(params) => addImageBoardItem(activeBoardKey, params)}

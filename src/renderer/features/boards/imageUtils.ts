@@ -23,3 +23,35 @@ export function getImageFileFromClipboard(event: ClipboardEvent): File | null {
   }
   return null
 }
+
+export function getImageDimensions(dataUrl: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const width = img.naturalWidth || img.width
+      const height = img.naturalHeight || img.height
+      if (!width || !height) {
+        reject(new Error('Could not read image dimensions'))
+        return
+      }
+      resolve({ width, height })
+    }
+    img.onerror = () => reject(new Error('Could not load image dimensions'))
+    img.src = dataUrl
+  })
+}
+
+export function fitImageIntoBounds(
+  original: { width: number; height: number },
+  bounds: { maxWidth: number; maxHeight: number }
+): { width: number; height: number } {
+  const scale = Math.min(
+    bounds.maxWidth / original.width,
+    bounds.maxHeight / original.height,
+    1
+  )
+  return {
+    width: Math.max(80, Math.round(original.width * scale)),
+    height: Math.max(80, Math.round(original.height * scale)),
+  }
+}

@@ -90,7 +90,10 @@ interface ProjectActions {
   getBoard: (key: BoardKey) => BoardDocument | undefined
   setBoardViewport: (key: BoardKey, viewport: BoardViewport) => void
   addTextBoardItem: (key: BoardKey, params: { x: number; y: number; text?: string }) => string
-  addImageBoardItem: (key: BoardKey, params: { x: number; y: number; dataUrl: string; filename?: string | null }) => string
+  addImageBoardItem: (
+    key: BoardKey,
+    params: { x: number; y: number; w?: number; h?: number; dataUrl: string; filename?: string | null }
+  ) => string
   updateBoardItem: (key: BoardKey, itemId: string, patch: Partial<BoardItem>) => void
   removeBoardItem: (key: BoardKey, itemId: string) => void
 
@@ -330,8 +333,8 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
       type: 'image',
       x: params.x,
       y: params.y,
-      w: 320,
-      h: 240,
+      w: params.w ?? 320,
+      h: params.h ?? 240,
       z: now,
       createdAt: now,
       updatedAt: now,

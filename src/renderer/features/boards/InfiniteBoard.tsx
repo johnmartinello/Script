@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type ClipboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent,
   type WheelEvent,
 } from 'react'
@@ -11,15 +12,28 @@ import type { BoardDocument, BoardImageItem, BoardItem, BoardKey, BoardTextItem,
 import { BoardItemText } from './BoardItemText'
 import { BoardItemImage } from './BoardItemImage'
 import { clampZoom, screenToWorld, worldToScreen } from './boardGeometry'
-import { getImageFileFromClipboard, readFileAsDataUrl } from './imageUtils'
+import {
+  fitImageIntoBounds,
+  getImageDimensions,
+  getImageFileFromClipboard,
+  readFileAsDataUrl,
+} from './imageUtils'
 
 interface InfiniteBoardProps {
   boardKey: BoardKey
   board: BoardDocument
   onViewportChange: (viewport: BoardViewport) => void
+  onAddText: (params: { x: number; y: number; text?: string }) => void
   onUpdateItem: (itemId: string, patch: Partial<BoardItem>) => void
   onRemoveItem: (itemId: string) => void
-  onAddImage: (params: { x: number; y: number; dataUrl: string; filename?: string | null }) => void
+  onAddImage: (params: {
+    x: number
+    y: number
+    w?: number
+    h?: number
+    dataUrl: string
+    filename?: string | null
+  }) => void
 }
 
 interface PanState {
@@ -42,12 +56,14 @@ interface ResizeState {
   startClientY: number
   startW: number
   startH: number
+  lockAspect: boolean
 }
 
 export function InfiniteBoard({
   boardKey,
   board,
   onViewportChange,
+  onAddText,
   onUpdateItem,
   onRemoveItem,
   onAddImage,
@@ -73,7 +89,7 @@ export function InfiniteBoard({
   }, [])
 
   useEffect(() => {
-    const onMove = (event: MouseEvent) => {
+    const onMove = (event: globalThis.MouseEvent) => {
       if (panState) {
         const dx = event.clientX - panState.startClientX
         const dy = event.clientY - panState.startClientY
@@ -93,10 +109,20 @@ export function InfiniteBoard({
       } else if (resizeState) {
         const dx = event.clientX - resizeState.startClientX
         const dy = event.clientY - resizeState.startClientY
-        onUpdateItem(resizeState.itemId, {
-          w: Math.max(120, resizeState.startW + dx / board.viewport.zoom),
-          h: Math.max(80, resizeState.startH + dy / board.viewport.zoom),
-        })
+        if (resizeState.lockAspect) {
+          const widthScale = (resizeState.startW + dx / board.viewport.zoom) / resizeState.startW
+          const heightScale = (resizeState.startH + dy / board.viewport.zoom) / resizeState.startH
+          const scale = Math.max(0.2, Math.max(widthScale, heightScale))
+          onUpdateItem(resizeState.itemId, {
+            w: Math.max(80, resizeState.startW * scale),
+            h: Math.max(80, resizeState.startH * scale),
+          })
+        } else {
+          onUpdateItem(resizeState.itemId, {
+            w: Math.max(120, resizeState.startW + dx / board.viewport.zoom),
+            h: Math.max(80, resizeState.startH + dy / board.viewport.zoom),
+          })
+        }
       }
     }
 
@@ -160,11 +186,39 @@ export function InfiniteBoard({
 
   const handlePaste = async (event: ClipboardEvent<HTMLDivElement>) => {
     const file = getImageFileFromClipboard(event.nativeEvent)
-    if (!file) return
-    event.preventDefault()
-    const dataUrl = await readFileAsDataUrl(file)
     const at = pointerWorldRef.current
-    onAddImage({ x: at.x, y: at.y, dataUrl, filename: file.name || null })
+    if (file) {
+      event.preventDefault()
+      const dataUrl = await readFileAsDataUrl(file)
+      const dimensions = await getImageDimensions(dataUrl)
+      const fitted = fitImageIntoBounds(dimensions, { maxWidth: 420, maxHeight: 320 })
+      onAddImage({
+        x: at.x,
+        y: at.y,
+        w: fitted.width,
+        h: fitted.height,
+        dataUrl,
+        filename: file.name || null,
+      })
+      return
+    }
+
+    const text = event.clipboardData.getData('text/plain')
+    if (!text.trim()) return
+    event.preventDefault()
+    onAddText({ x: at.x, y: at.y, text })
+  }
+
+  const handleCanvasDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) return
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const at = screenToWorld(
+      { x: event.clientX - rect.left, y: event.clientY - rect.top },
+      board.viewport,
+      size
+    )
+    onAddText({ x: at.x, y: at.y, text: '' })
   }
 
   const onItemPointerDown = (item: BoardItem, event: PointerEvent<HTMLDivElement>) => {
@@ -189,6 +243,7 @@ export function InfiniteBoard({
       startClientY: event.clientY,
       startW: item.w,
       startH: item.h,
+      lockAspect: item.type === 'image',
     })
     onUpdateItem(item.id, { z: Date.now() })
   }
@@ -200,6 +255,7 @@ export function InfiniteBoard({
       tabIndex={0}
       onPointerMove={(event) => updatePointerWorld(event.clientX, event.clientY)}
       onPointerDown={handleCanvasPointerDown}
+      onDoubleClick={handleCanvasDoubleClick}
       onWheel={handleWheel}
       onPaste={handlePaste}
       className="relative h-full w-full overflow-hidden outline-none bg-[rgb(var(--bg))]"
@@ -231,6 +287,19 @@ export function InfiniteBoard({
                 onPointerDown={(event) => onItemPointerDown(item, event)}
                 onResizeStart={(event) => onItemResizeStart(item, event)}
                 onTextChange={(text) => onUpdateItem(item.id, { text })}
+                onPasteImage={async (file) => {
+                  const dataUrl = await readFileAsDataUrl(file)
+                  const dimensions = await getImageDimensions(dataUrl)
+                  const fitted = fitImageIntoBounds(dimensions, { maxWidth: 360, maxHeight: 280 })
+                  onAddImage({
+                    x: item.x + 24,
+                    y: item.y + 24,
+                    w: fitted.width,
+                    h: fitted.height,
+                    dataUrl,
+                    filename: file.name || null,
+                  })
+                }}
                 onDelete={() => onRemoveItem(item.id)}
               />
             </div>

@@ -33,7 +33,7 @@ export function BoardItemImage({ item, onPointerDown, onResizeStart, onDelete }:
         src={item.dataUrl}
         alt={item.filename || 'Board image'}
         draggable={false}
-        className="w-full h-[calc(100%-1.75rem)] object-cover select-none"
+        className="w-full h-[calc(100%-1.75rem)] object-contain bg-[rgb(var(--bg-muted))] select-none"
         onPointerDown={(event) => event.stopPropagation()}
       />
       <button
