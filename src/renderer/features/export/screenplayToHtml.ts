@@ -8,9 +8,17 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;')
 }
 
-export function screenplayToHtml(project: Project): string {
+interface ScreenplayExportOptions {
+  includeBranchAppendix?: boolean
+}
+
+export function screenplayToHtml(project: Project, options: ScreenplayExportOptions = {}): string {
+  const includeBranchAppendix = options.includeBranchAppendix ?? false
   const parts: string[] = []
-  for (const scene of project.scenes) {
+  const canonScenes = project.scenes.filter((scene) => scene.sceneKind === 'canon')
+  const branchScenes = project.scenes.filter((scene) => scene.sceneKind === 'branch')
+
+  for (const scene of canonScenes) {
     const headingText = scene.displayNumber
       ? `${scene.displayNumber}  ${scene.title}`
       : scene.title
@@ -32,6 +40,38 @@ export function screenplayToHtml(project: Project): string {
     }
     parts.push('<div class="scene-break"></div>')
   }
+
+  if (includeBranchAppendix && branchScenes.length > 0) {
+    parts.push('<div class="appendix-heading">BRANCH SCENES APPENDIX</div>')
+    for (const scene of branchScenes) {
+      const headingText = scene.displayNumber
+        ? `${scene.displayNumber}  ${scene.title}`
+        : scene.title
+      parts.push(`<div class="scene-heading">${escapeHtml(headingText)}</div>`)
+      parts.push(
+        `<div class="action"><strong>Condition:</strong> ${escapeHtml(
+          scene.branchMeta?.conditionText ?? '(none)'
+        )}</div>`
+      )
+      for (const beat of scene.beats) {
+        if (beat.type === 'scene-heading') {
+          parts.push(`<div class="slugline">${escapeHtml(beat.text)}</div>`)
+        } else if (beat.type === 'action') {
+          parts.push(`<div class="action">${escapeHtml(beat.text)}</div>`)
+        } else if (beat.type === 'character-cue') {
+          parts.push(`<div class="character">${escapeHtml(beat.text)}</div>`)
+        } else if (beat.type === 'dialogue') {
+          parts.push(`<div class="dialogue">${escapeHtml(beat.text)}</div>`)
+        } else if (beat.type === 'parenthetical') {
+          parts.push(`<div class="parenthetical">${escapeHtml(beat.text)}</div>`)
+        } else if (beat.type === 'transition') {
+          parts.push(`<div class="transition">${escapeHtml(beat.text)}</div>`)
+        }
+      }
+      parts.push('<div class="scene-break"></div>')
+    }
+  }
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -54,6 +94,7 @@ export function screenplayToHtml(project: Project): string {
   .parenthetical { margin: 0 1.9in 0.5em 2.1in; max-width: 2in; font-size: 0.95em; }
   /* Transition: flush right, 1.5" wide block at 6" from left → margin-left 4.5in */
   .transition { text-align: right; margin: 0.5em 0; margin-left: 4.5in; width: 1.5in; }
+  .appendix-heading { margin-top: 2em; margin-bottom: 1em; font-weight: bold; text-align: center; }
   .scene-break { height: 0; margin: 0; }
   @media print { body { margin: 1in 1in 1in 1.5in; } }
 </style>
@@ -64,8 +105,8 @@ ${parts.join('\n')}
 </html>`
 }
 
-export function printScreenplay(project: Project): void {
-  const html = screenplayToHtml(project)
+export function printScreenplay(project: Project, options: ScreenplayExportOptions = {}): void {
+  const html = screenplayToHtml(project, options)
   const win = window.open('', '_blank')
   if (!win) return
   win.document.write(html)

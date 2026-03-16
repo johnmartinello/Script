@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { Node, Edge } from '@xyflow/react'
 import { useProjectStore } from '@/renderer/store/projectStore'
 import type { SceneNodeData } from './SceneNode'
+import { deriveSceneFlowEdges, isUnattachedBranch } from './graphMapping'
 
 type SetNodes = React.Dispatch<React.SetStateAction<Node<SceneNodeData, 'scene'>[]>>
 type SetEdges = React.Dispatch<React.SetStateAction<Edge[]>>
@@ -36,7 +37,7 @@ export function useSyncGraphToStore(
       const state = useProjectStore.getState()
       const project = state.project
       if (!project) return
-      const { scenes, edges, nodePositions } = project
+      const { scenes, nodePositions } = project
       const selectedSceneId = state.selectedSceneId
       const newNodes: Node<SceneNodeData, 'scene'>[] = scenes.map((s) => ({
         id: s.id,
@@ -46,16 +47,12 @@ export function useSyncGraphToStore(
           sceneId: s.id,
           title: s.title,
           displayNumber: s.displayNumber ?? undefined,
+          sceneKind: s.sceneKind,
+          unattached: isUnattachedBranch(s),
           selected: selectedSceneId === s.id,
         },
       }))
-      const newEdges: Edge[] = edges.map((e) => ({
-        id: e.id,
-        source: e.sourceSceneId,
-        target: e.targetSceneId,
-        label: e.label || undefined,
-        type: 'smoothstep',
-      }))
+      const newEdges: Edge[] = deriveSceneFlowEdges(project)
       setNodes(newNodes as Node<SceneNodeData, 'scene'>[])
       setEdges(newEdges)
     })

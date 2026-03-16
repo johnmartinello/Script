@@ -1,55 +1,76 @@
 /**
- * Computes display numbers for scenes from the project graph.
- * Main path: 1, 2, 3, ... (from chapters or scenes order).
- * Branch scenes: N.a, N.b, ... where N is the main-path number of the source.
+ * Computes display numbers from scene metadata.
+ * Canon scenes: 1, 2, 3...
+ * Branch scenes: N.1, N.2... grouped by preceding canon and sorted by creation order.
+ * Unattached branches: ?.1, ?.2...
  */
 
-import type { Project, GraphEdge } from './model'
+import type { Project, Scene } from './model'
 
 export function computeSceneNumbers(project: Project): Record<string, string> {
   const sceneById = new Map(project.scenes.map((s) => [s.id, s]))
-  const edgesBySource = new Map<string, GraphEdge[]>()
-  for (const e of project.edges) {
-    const list = edgesBySource.get(e.sourceSceneId) ?? []
-    list.push(e)
-    edgesBySource.set(e.sourceSceneId, list)
-  }
-
-  // Main path: chapter order or scenes array order
-  let mainPathIds: string[]
-  if (project.chapters.length > 0) {
-    mainPathIds = project.chapters.flatMap((ch) => ch.sceneIds)
-  } else {
-    mainPathIds = project.scenes.map((s) => s.id)
-  }
-  mainPathIds = [...new Set(mainPathIds)].filter((id) => sceneById.has(id))
-
+  const canonById = new Map(
+    project.scenes.filter((s) => s.sceneKind === 'canon').map((s) => [s.id, s])
+  )
   const numbers: Record<string, string> = {}
-  mainPathIds.forEach((id, i) => {
+
+  // Canon path: chapter order or scene array order, canon scenes only.
+  let canonSceneIds: string[]
+  if (project.chapters.length > 0) {
+    canonSceneIds = project.chapters.flatMap((ch) => ch.sceneIds)
+  } else {
+    canonSceneIds = project.scenes.map((s) => s.id)
+  }
+
+  const canonOrdered = [...new Set(canonSceneIds)].filter((id) => canonById.has(id))
+  // Ensure canon scenes not in chapters still get a deterministic number.
+  const remainingCanon = project.scenes
+    .filter((s) => s.sceneKind === 'canon')
+    .map((s) => s.id)
+    .filter((id) => !canonOrdered.includes(id))
+  const allCanonOrdered = [...canonOrdered, ...remainingCanon]
+
+  allCanonOrdered.forEach((id, i) => {
     numbers[id] = String(i + 1)
   })
 
-  // Branch scenes: for each main-path scene, outgoing edges.
-  for (let i = 0; i < mainPathIds.length; i++) {
-    const sourceId = mainPathIds[i]
-    const n = String(i + 1)
-    const outgoing = edgesBySource.get(sourceId) ?? []
-    const branchEdges = [...outgoing].sort((a, b) =>
-      (a.label || a.id).localeCompare(b.label || b.id)
-    )
-    branchEdges.forEach((e, idx) => {
-      const targetId = e.targetSceneId
-      if (sceneById.has(targetId) && numbers[targetId] == null) {
-        const letter = String.fromCharCode(97 + idx)
-        numbers[targetId] = `${n}.${letter}`
-      }
+  const branches = project.scenes.filter((s) => s.sceneKind === 'branch')
+  const byPreceding = new Map<string, Scene[]>()
+  const unattached: Scene[] = []
+
+  for (const branch of branches) {
+    const precedingId = branch.branchMeta?.precedingCanonSceneId
+    if (precedingId && canonById.has(precedingId)) {
+      const list = byPreceding.get(precedingId) ?? []
+      list.push(branch)
+      byPreceding.set(precedingId, list)
+    } else {
+      unattached.push(branch)
+    }
+  }
+
+  const sortByCreationOrder = (a: Scene, b: Scene) => {
+    const ao = a.branchMeta?.branchOrder ?? Number.MAX_SAFE_INTEGER
+    const bo = b.branchMeta?.branchOrder ?? Number.MAX_SAFE_INTEGER
+    if (ao !== bo) return ao - bo
+    return a.id.localeCompare(b.id)
+  }
+
+  for (const canonId of allCanonOrdered) {
+    const canonNumber = numbers[canonId]
+    const list = (byPreceding.get(canonId) ?? []).sort(sortByCreationOrder)
+    list.forEach((branch, idx) => {
+      numbers[branch.id] = `${canonNumber}.${idx + 1}`
     })
   }
 
-  // Fallback for any scene still unnumbered
-  for (const s of project.scenes) {
-    if (numbers[s.id] == null) {
-      numbers[s.id] = '?'
+  unattached.sort(sortByCreationOrder).forEach((branch, idx) => {
+    numbers[branch.id] = `?.${idx + 1}`
+  })
+
+  for (const scene of project.scenes) {
+    if (numbers[scene.id] == null) {
+      numbers[scene.id] = sceneById.has(scene.id) ? '?' : ''
     }
   }
 

@@ -4,7 +4,6 @@ import {
   Background,
   Controls,
   MiniMap,
-  addEdge,
   useNodesState,
   useEdgesState,
   type Node,
@@ -18,18 +17,21 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useProjectStore } from '@/renderer/store/projectStore'
+import type { Scene } from '@/shared/model'
 import { SceneNode, type SceneNodeData } from './SceneNode'
 import { useSyncGraphToStore } from './useSyncGraphToStore'
+import { deriveSceneFlowEdges, isUnattachedBranch } from './graphMapping'
 
 const nodeTypes: NodeTypes = {
   scene: SceneNode,
 }
 
 function sceneToNode(
-  s: { id: string; title: string; displayNumber?: string | null },
+  s: Scene,
   pos: { x: number; y: number },
   selectedSceneId: string | null
 ): Node<SceneNodeData, 'scene'> {
+  const unattached = isUnattachedBranch(s)
   return {
     id: s.id,
     type: 'scene',
@@ -38,6 +40,8 @@ function sceneToNode(
       sceneId: s.id,
       title: s.title,
       displayNumber: s.displayNumber ?? undefined,
+      sceneKind: s.sceneKind,
+      unattached,
       selected: selectedSceneId === s.id,
     },
   }
@@ -50,19 +54,13 @@ function projectToNodesAndEdges(): {
   const state = useProjectStore.getState()
   const project = state.project
   if (!project) return { nodes: [], edges: [] }
-  const { scenes, edges, nodePositions } = project
+  const { scenes, nodePositions } = project
   const selectedSceneId = state.selectedSceneId
   const nodes = scenes.map((s) => {
     const pos = nodePositions[s.id] ?? { x: 0, y: 0 }
     return sceneToNode(s, pos, selectedSceneId)
   })
-  const flowEdges: Edge[] = edges.map((e) => ({
-    id: e.id,
-    source: e.sourceSceneId,
-    target: e.targetSceneId,
-    label: e.label || undefined,
-    type: 'smoothstep',
-  }))
+  const flowEdges: Edge[] = deriveSceneFlowEdges(project)
   return { nodes, edges: flowEdges }
 }
 
@@ -76,13 +74,13 @@ export function GraphPanel() {
   const onConnect = useCallback(
     (connection: Connection) => {
       if (!connection.source || !connection.target) return
-      const edge = useProjectStore.getState().addEdgeFromConnection(
-        connection.source,
-        connection.target
-      )
-      setEdges((eds) => addEdge({ ...connection, id: edge.id }, eds))
+      try {
+        useProjectStore.getState().addEdgeFromConnection(connection.source, connection.target)
+      } catch {
+        // Invalid connections are ignored; derived scene flow remains authoritative.
+      }
     },
-    [setEdges]
+    []
   )
 
   const onNodeDoubleClick = useCallback((_: React.MouseEvent, node: Node) => {

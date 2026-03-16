@@ -82,7 +82,10 @@ export function AppShell() {
   }
 
   const handleExportPdf = () => {
-    printScreenplay(project)
+    const includeBranchAppendix = window.confirm(
+      'Include branched scenes appendix in export?\n\nOK = include appendix\nCancel = canon only'
+    )
+    printScreenplay(project, { includeBranchAppendix })
   }
 
   return (

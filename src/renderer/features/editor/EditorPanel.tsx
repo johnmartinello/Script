@@ -8,12 +8,17 @@ export function EditorPanel() {
   const syncDocumentToScenes = useProjectStore((s) => s.syncDocumentToScenes)
   const selectedSceneId = useProjectStore((s) => s.selectedSceneId)
   const getScene = useProjectStore((s) => s.getScene)
+  const setBeats = useProjectStore((s) => s.setBeats)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const lastScrollToSceneId = useRef<string | null>(null)
 
   const allBeats = getAllBeatsFlat()
+  const selectedScene = selectedSceneId ? getScene(selectedSceneId) : undefined
+  const isBranchMode = selectedScene?.sceneKind === 'branch'
+  const editorBeats = isBranchMode ? (selectedScene?.beats ?? []) : allBeats
 
   useEffect(() => {
+    if (isBranchMode) return
     if (!selectedSceneId || !scrollContainerRef.current) return
     if (lastScrollToSceneId.current === selectedSceneId) return
     lastScrollToSceneId.current = selectedSceneId
@@ -24,7 +29,7 @@ export function EditorPanel() {
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
-  }, [selectedSceneId, getScene])
+  }, [selectedSceneId, getScene, isBranchMode])
 
   if (!project) {
     return (
@@ -41,8 +46,12 @@ export function EditorPanel() {
         className="screenplay-editor-canvas flex-1 min-h-0 overflow-auto px-6 py-0"
       >
         <ScreenplayEditor
-          beats={allBeats}
+          beats={editorBeats}
           onBeatsChange={(beats) => {
+            if (isBranchMode && selectedSceneId) {
+              setBeats(selectedSceneId, beats)
+              return
+            }
             syncDocumentToScenes(beats)
           }}
         />

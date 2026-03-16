@@ -5,7 +5,7 @@ import type {
   Beat,
   GraphEdge,
   GraphNodePosition,
-  Variable,
+  BranchMeta,
 } from '@/shared/model'
 import {
   createEmptyProject,
@@ -46,12 +46,24 @@ interface ProjectActions {
   setActiveBeatId: (id: string | null) => void
 
   addScene: (title?: string) => Scene
-  updateScene: (sceneId: string, patch: Partial<Pick<Scene, 'title' | 'chapterId' | 'sourceBeatId'>>) => void
+  addBranchScene: (params: {
+    title?: string
+    precedingCanonSceneId: string
+    followingCanonSceneId: string
+    conditionText: string
+  }) => Scene
+  updateScene: (
+    sceneId: string,
+    patch: Partial<Pick<Scene, 'title' | 'chapterId' | 'sourceBeatId' | 'branchMeta' | 'sceneKind'>>
+  ) => void
   deleteScene: (sceneId: string) => void
   getScene: (sceneId: string) => Scene | undefined
+  getCanonicalScenes: () => Scene[]
+  getBranchScenes: () => Scene[]
+  isSceneUnattached: (sceneId: string) => boolean
   /** Scene id that contains the beat with the given id (for universal document view). */
   getSceneIdByBeatId: (beatId: string) => string | undefined
-  /** All beats from all scenes concatenated in document order (for universal document view). */
+  /** All beats from canon scenes concatenated in document order (for main editor). */
   getAllBeatsFlat: () => Beat[]
   /** Create/update scenes from scene-heading beats in document order. First heading = owner scene; rest create or update by sourceBeatId. */
   syncScenesFromHeadings: (ownerSceneId: string, beats: Beat[]) => void
@@ -72,16 +84,32 @@ interface ProjectActions {
   setNodePosition: (sceneId: string, position: GraphNodePosition) => void
   setNodePositions: (positions: Record<string, GraphNodePosition>) => void
 
-  addVariable: (variable: Variable) => void
-  updateVariable: (variableId: string, patch: Partial<Variable>) => void
-  removeVariable: (variableId: string) => void
-
   newProject: () => void
 }
 
 function getScene(state: ProjectState, sceneId: string): Scene | undefined {
   if (!state.project) return undefined
   return state.project.scenes.find((s) => s.id === sceneId)
+}
+
+function getCanonicalScenes(state: ProjectState): Scene[] {
+  if (!state.project) return []
+  return state.project.scenes.filter((s) => s.sceneKind === 'canon')
+}
+
+function getBranchScenes(state: ProjectState): Scene[] {
+  if (!state.project) return []
+  return state.project.scenes.filter((s) => s.sceneKind === 'branch')
+}
+
+function isSceneUnattached(state: ProjectState, sceneId: string): boolean {
+  const scene = getScene(state, sceneId)
+  if (!scene || scene.sceneKind !== 'branch') return false
+  const meta = scene.branchMeta
+  if (!meta) return true
+  const precedingExists = !!meta.precedingCanonSceneId && !!getScene(state, meta.precedingCanonSceneId)
+  const followingExists = !!meta.followingCanonSceneId && !!getScene(state, meta.followingCanonSceneId)
+  return !precedingExists || !followingExists
 }
 
 function replaceScene(
@@ -156,6 +184,55 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
     return scene
   },
 
+  addBranchScene: ({ title, precedingCanonSceneId, followingCanonSceneId, conditionText }) => {
+    const headingBeatId = newBeatId()
+    const headingText = title?.trim() || 'Untitled Branch Scene'
+    const state = get()
+    const project = state.project
+    if (!project) throw new Error('No project loaded')
+
+    const branchOrder =
+      project.scenes
+        .filter(
+          (s) =>
+            s.sceneKind === 'branch' &&
+            s.branchMeta?.precedingCanonSceneId === precedingCanonSceneId
+        )
+        .reduce((max, s) => Math.max(max, s.branchMeta?.branchOrder ?? 0), 0) + 1
+
+    const scene: Scene = {
+      ...createScene(headingText),
+      sceneKind: 'branch',
+      branchMeta: {
+        precedingCanonSceneId,
+        followingCanonSceneId,
+        conditionText: conditionText.trim(),
+        branchOrder,
+      },
+      beats: [{ id: headingBeatId, type: 'scene-heading', text: headingText }],
+      sourceBeatId: headingBeatId,
+    }
+
+    set((currentState) => {
+      if (!currentState.project) return currentState
+      const next = {
+        ...currentState.project,
+        scenes: [...currentState.project.scenes, scene],
+        nodePositions: {
+          ...currentState.project.nodePositions,
+          [scene.id]: { x: 120 + currentState.project.scenes.length * 120, y: 220 },
+        },
+      }
+      return {
+        project: applySceneNumbers(next),
+        selectedSceneId: scene.id,
+        viewMode: 'editor',
+        dirty: true,
+      }
+    })
+    return scene
+  },
+
   updateScene: (sceneId, patch) => {
     set((state) => {
       const scene = getScene(state, sceneId)
@@ -169,9 +246,29 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   deleteScene: (sceneId) => {
     set((state) => {
       if (!state.project) return state
+      const deleted = state.project.scenes.find((s) => s.id === sceneId)
+      const nextScenes = state.project.scenes
+        .filter((s) => s.id !== sceneId)
+        .map((s) => {
+          if (!deleted || deleted.sceneKind !== 'canon' || s.sceneKind !== 'branch' || !s.branchMeta) {
+            return s
+          }
+          const precedingCanonSceneId =
+            s.branchMeta.precedingCanonSceneId === sceneId ? null : s.branchMeta.precedingCanonSceneId
+          const followingCanonSceneId =
+            s.branchMeta.followingCanonSceneId === sceneId ? null : s.branchMeta.followingCanonSceneId
+          return {
+            ...s,
+            branchMeta: {
+              ...s.branchMeta,
+              precedingCanonSceneId,
+              followingCanonSceneId,
+            },
+          }
+        })
       const next = {
         ...state.project,
-        scenes: state.project.scenes.filter((s) => s.id !== sceneId),
+        scenes: nextScenes,
         edges: state.project.edges.filter(
           (e) => e.sourceSceneId !== sceneId && e.targetSceneId !== sceneId
         ),
@@ -188,6 +285,9 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   },
 
   getScene: (sceneId) => getScene(get(), sceneId),
+  getCanonicalScenes: () => getCanonicalScenes(get()),
+  getBranchScenes: () => getBranchScenes(get()),
+  isSceneUnattached: (sceneId) => isSceneUnattached(get(), sceneId),
 
   getSceneIdByBeatId: (beatId) => {
     const state = get()
@@ -198,7 +298,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   getAllBeatsFlat: () => {
     const state = get()
     if (!state.project) return []
-    return state.project.scenes.flatMap((s) => s.beats)
+    return getCanonicalScenes(state).flatMap((s) => s.beats)
   },
 
   syncScenesFromHeadings: (ownerSceneId, beats) => {
@@ -212,7 +312,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
     for (let i = 1; i < headings.length; i++) {
       const { beatId, text } = headings[i]
       const project = get().project
-      const existing = project?.scenes.find((s) => s.sourceBeatId === beatId)
+      const existing = project?.scenes.find((s) => s.sceneKind === 'canon' && s.sourceBeatId === beatId)
       if (existing) {
         get().updateScene(existing.id, { title: text })
       } else {
@@ -225,22 +325,35 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   syncDocumentToScenes: (allBeats) => {
     set((state) => {
       if (!state.project) return state
+      const canonScenes = state.project.scenes.filter((s) => s.sceneKind === 'canon')
+      const branchScenes = state.project.scenes.filter((s) => s.sceneKind === 'branch')
+      if (canonScenes.length === 0) return state
+
       const headings = allBeats
         .filter((b): b is Beat & { type: 'scene-heading'; text: string } => b.type === 'scene-heading')
       if (headings.length === 0) {
-        const first = state.project.scenes[0]
+        const first = canonScenes[0]
         if (!first) return state
-        const beats = allBeats.length ? allBeats : [{ id: newBeatId(), type: 'scene-heading' as const, text: '' }]
+        const beats = allBeats.length
+          ? allBeats
+          : [{ id: newBeatId(), type: 'scene-heading' as const, text: '' }]
         const firstHeading = beats.find((b) => b.type === 'scene-heading')
-        const nextProject = replaceScene(state, first.id, () => ({
-          ...first,
-          beats,
-          title: 'Untitled Scene',
-          sourceBeatId: firstHeading?.id ?? null,
-        }))
-        if (!nextProject) return state
+        const nextCanonScenes = [
+          {
+            ...first,
+            beats,
+            title: 'Untitled Scene',
+            sourceBeatId: firstHeading?.id ?? null,
+          },
+          ...canonScenes.slice(1),
+        ]
+        const nextProject = {
+          ...state.project,
+          scenes: [...nextCanonScenes, ...branchScenes],
+        }
         return { project: applySceneNumbers(nextProject), dirty: true }
       }
+
       const headingBeatIds = new Set(headings.map((h) => h.id))
       const headingIndices = allBeats
         .map((b, i) => (b.type === 'scene-heading' ? i : -1))
@@ -258,41 +371,57 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
         }
       )
       const existingBySourceBeatId = new Map<string, Scene>()
-      state.project.scenes.forEach((s) => {
+      canonScenes.forEach((s) => {
         if (s.sourceBeatId) existingBySourceBeatId.set(s.sourceBeatId, s)
       })
-      const nextScenes: Scene[] = []
+      const nextCanonScenes: Scene[] = []
       for (const g of groups) {
         const existing = existingBySourceBeatId.get(g.headingBeatId)
         const stillExists = existing && headingBeatIds.has(g.headingBeatId)
         if (existing && stillExists) {
-          nextScenes.push({ ...existing, title: g.title, beats: g.beats, sourceBeatId: g.headingBeatId })
+          nextCanonScenes.push({
+            ...existing,
+            sceneKind: 'canon',
+            branchMeta: null,
+            title: g.title,
+            beats: g.beats,
+            sourceBeatId: g.headingBeatId,
+          })
         } else {
           const scene = createScene(g.title)
-          nextScenes.push({ ...scene, beats: g.beats, sourceBeatId: g.headingBeatId })
+          nextCanonScenes.push({
+            ...scene,
+            sceneKind: 'canon',
+            branchMeta: null,
+            beats: g.beats,
+            sourceBeatId: g.headingBeatId,
+          })
         }
       }
+      const nextScenes = [...nextCanonScenes, ...branchScenes]
       const keepIds = new Set(nextScenes.map((s) => s.id))
-      const prevSceneIds = new Set(state.project.scenes.map((s) => s.id))
-      const createdSceneIds = new Set(nextScenes.filter((s) => !prevSceneIds.has(s.id)).map((s) => s.id))
-      const removeIds = state.project.scenes.filter((s) => !keepIds.has(s.id)).map((s) => s.id)
+      const prevSceneIds = new Set(canonScenes.map((s) => s.id))
+      const createdSceneIds = new Set(
+        nextCanonScenes.filter((s) => !prevSceneIds.has(s.id)).map((s) => s.id)
+      )
+      const removeCanonIds = canonScenes.filter((s) => !nextCanonScenes.some((n) => n.id === s.id)).map((s) => s.id)
       const nextNodePositions = { ...state.project.nodePositions }
       nextScenes.forEach((s, i) => {
         if (!nextNodePositions[s.id]) {
           nextNodePositions[s.id] = { x: 100 + i * 180, y: 100 }
         }
       })
-      removeIds.forEach((id) => delete nextNodePositions[id])
+      removeCanonIds.forEach((id) => delete nextNodePositions[id])
       const nextEdges = state.project.edges.filter(
         (e) => keepIds.has(e.sourceSceneId) && keepIds.has(e.targetSceneId)
       )
       const activeSceneId = state.activeBeatId
-        ? nextScenes.find((s) => s.beats.some((b) => b.id === state.activeBeatId))?.id
+        ? nextCanonScenes.find((s) => s.beats.some((b) => b.id === state.activeBeatId))?.id
         : undefined
       const nextSelected =
         activeSceneId && createdSceneIds.has(activeSceneId)
           ? activeSceneId
-          : state.selectedSceneId && keepIds.has(state.selectedSceneId)
+          : state.selectedSceneId && nextScenes.some((s) => s.id === state.selectedSceneId)
           ? state.selectedSceneId
           : nextScenes[0]?.id ?? null
       return {
@@ -380,8 +509,14 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   },
 
   addEdgeFromConnection: (sourceSceneId, targetSceneId) => {
-    const scene = get().getScene(sourceSceneId)
-    if (!scene) throw new Error('Source scene not found')
+    const sourceScene = get().getScene(sourceSceneId)
+    const targetScene = get().getScene(targetSceneId)
+    if (!sourceScene) throw new Error('Source scene not found')
+    if (!targetScene) throw new Error('Target scene not found')
+    const invalid =
+      (sourceScene.sceneKind === 'branch' && targetScene.sceneKind === 'branch') ||
+      (sourceScene.sceneKind === 'branch' && targetScene.sceneKind !== 'canon')
+    if (invalid) throw new Error('Invalid branch connection')
     const edge = createGraphEdge(sourceSceneId, targetSceneId, { label: '' })
     set((state) => {
       if (!state.project) return state
@@ -433,47 +568,6 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
     set((state) => {
       if (!state.project) return state
       return { project: { ...state.project, nodePositions: positions }, dirty: true }
-    })
-  },
-
-  addVariable: (variable) => {
-    set((state) => {
-      if (!state.project) return state
-      return {
-        project: {
-          ...state.project,
-          variables: [...state.project.variables, variable],
-        },
-        dirty: true,
-      }
-    })
-  },
-
-  updateVariable: (variableId, patch) => {
-    set((state) => {
-      if (!state.project) return state
-      return {
-        project: {
-          ...state.project,
-          variables: state.project.variables.map((v) =>
-            v.id === variableId ? { ...v, ...patch } : v
-          ),
-        },
-        dirty: true,
-      }
-    })
-  },
-
-  removeVariable: (variableId) => {
-    set((state) => {
-      if (!state.project) return state
-      return {
-        project: {
-          ...state.project,
-          variables: state.project.variables.filter((v) => v.id !== variableId),
-        },
-        dirty: true,
-      }
     })
   },
 

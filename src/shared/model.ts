@@ -1,6 +1,6 @@
 /**
- * Phase 1 domain model for .gscript project file.
- * Single source of truth for Project, Scene, Beat, Graph, and Variables.
+ * Domain model for .gscript project file.
+ * Single source of truth for Project, Scene, Beat, Graph, and branching metadata.
  */
 
 export type BeatType =
@@ -10,9 +10,6 @@ export type BeatType =
   | 'dialogue'
   | 'parenthetical'
   | 'transition'
-  | 'set-variable'
-
-export type VariableType = 'boolean' | 'integer' | 'string'
 
 /** Base beat: id and type. */
 export interface BeatBase {
@@ -50,12 +47,6 @@ export interface BeatTransition extends BeatBase {
   text: string
 }
 
-export interface BeatSetVariable extends BeatBase {
-  type: 'set-variable'
-  variableId: string
-  value: string
-}
-
 export type Beat =
   | BeatSceneHeading
   | BeatAction
@@ -63,12 +54,31 @@ export type Beat =
   | BeatDialogue
   | BeatParenthetical
   | BeatTransition
-  | BeatSetVariable
+
+export type SceneKind = 'canon' | 'branch'
+
+export interface BranchMeta {
+  /** Canon scene that precedes this branch in the main flow. */
+  precedingCanonSceneId: string | null
+  /** Canon scene that follows this branch in the main flow. */
+  followingCanonSceneId: string | null
+  /** Free-text condition/description for when this branch should play. */
+  conditionText: string
+  /**
+   * Stable creation-order index within the same preceding canon scene.
+   * Used for numbering: N.1, N.2, ...
+   */
+  branchOrder: number
+}
 
 export interface Scene {
   id: string
   title: string
   beats: Beat[]
+  /** Whether this scene is part of the canon flow or a branched extra scene. */
+  sceneKind: SceneKind
+  /** Branch metadata when sceneKind === 'branch'. Null for canon scenes. */
+  branchMeta: BranchMeta | null
   /** Optional chapter/act id for grouping. */
   chapterId: string | null
   /** Optional display number for UI/export (e.g. "2.b"). */
@@ -91,14 +101,6 @@ export interface GraphEdge {
   condition: string
 }
 
-/** Variable definition (Phase 1: focus on boolean). */
-export interface Variable {
-  id: string
-  name: string
-  type: VariableType
-  defaultValue: string
-}
-
 export interface ChapterGroup {
   id: string
   title: string
@@ -110,7 +112,6 @@ export interface Project {
   name: string
   scenes: Scene[]
   edges: GraphEdge[]
-  variables: Variable[]
   chapters: ChapterGroup[]
   /** Scene id -> { x, y } for React Flow layout. */
   nodePositions: Record<string, GraphNodePosition>
@@ -118,7 +119,7 @@ export interface Project {
   version: number
 }
 
-export const GSCRIPT_VERSION = 1
+export const GSCRIPT_VERSION = 2
 
 export function createEmptyProject(name: string = 'Untitled'): Project {
   return {
@@ -126,7 +127,6 @@ export function createEmptyProject(name: string = 'Untitled'): Project {
     name,
     scenes: [],
     edges: [],
-    variables: [],
     chapters: [],
     nodePositions: {},
     version: GSCRIPT_VERSION,
@@ -138,16 +138,9 @@ export function createScene(title: string = 'Untitled Scene'): Scene {
     id: crypto.randomUUID(),
     title,
     beats: [],
+    sceneKind: 'canon',
+    branchMeta: null,
     chapterId: null,
-  }
-}
-
-export function createVariable(name: string = 'flag'): Variable {
-  return {
-    id: crypto.randomUUID(),
-    name,
-    type: 'boolean',
-    defaultValue: 'false',
   }
 }
 

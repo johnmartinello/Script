@@ -36,8 +36,7 @@ export function tiptapJsonToBeats(doc: {
       rawType === 'character-cue' ||
       rawType === 'dialogue' ||
       rawType === 'parenthetical' ||
-      rawType === 'transition' ||
-      rawType === 'set-variable'
+      rawType === 'transition'
         ? rawType
         : 'action'
     const id = node.attrs?.beatId ?? crypto.randomUUID()

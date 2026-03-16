@@ -17,8 +17,6 @@ function beatTypeToSectionId(type: BeatType | null): ReferenceSectionId {
       return 'parenthetical'
     case 'transition':
       return 'transition'
-    case 'set-variable':
-      return 'set-variable'
     default:
       return 'scene-heading'
   }

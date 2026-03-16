@@ -5,7 +5,6 @@ export type ReferenceSectionId =
   | 'dialogue'
   | 'parenthetical'
   | 'transition'
-  | 'set-variable'
 
 export interface ReferenceEntry {
   label: string
@@ -206,25 +205,6 @@ export const referenceSections: ReferenceSection[] = [
         description:
           'Explicitly call out the screen going to black, often for dramatic emphasis.',
         example: 'FADE TO BLACK.',
-      },
-    ],
-  },
-  {
-    id: 'set-variable',
-    title: 'Set Variable',
-    summary:
-      'A beat that changes game state. Use it to track flags, counters, and other variables that drive branching logic.',
-    entries: [
-      {
-        label: 'One intent per beat',
-        description:
-          'Prefer multiple clear set-variable beats over a single beat that changes many unrelated variables.',
-        example: '[SET hasKey = true]',
-      },
-      {
-        label: 'Name flags clearly',
-        description:
-          'Use readable variable names (hasKey, helpedVillager, doorUnlocked) so logic remains understandable later.',
       },
     ],
   },

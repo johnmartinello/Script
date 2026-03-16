@@ -78,7 +78,6 @@ export const BeatBlock = Node.create<BeatOptions>({
       'Mod-4': ({ editor }) => setCurrentBeatType(editor, 'dialogue'),
       'Mod-5': ({ editor }) => setCurrentBeatType(editor, 'parenthetical'),
       'Mod-6': ({ editor }) => setCurrentBeatType(editor, 'transition'),
-      'Mod-7': ({ editor }) => setCurrentBeatType(editor, 'set-variable'),
     }
   },
 })
@@ -97,8 +96,6 @@ function nextBeatType(current: BeatType): BeatType {
       return 'dialogue'
     case 'transition':
       return 'scene-heading'
-    case 'set-variable':
-      return 'action'
     default:
       return 'action'
   }

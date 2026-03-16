@@ -10,7 +10,6 @@ const beatLabels: Record<BeatType, string> = {
   dialogue: 'Dialogue',
   parenthetical: 'Parenthetical',
   transition: 'Transition',
-  'set-variable': 'Set Variable',
 }
 
 const beatShortcutLabels: Partial<Record<BeatType, string>> = {
@@ -88,7 +87,6 @@ function BeatTypeDropdown({
           'dialogue',
           'parenthetical',
           'transition',
-          'set-variable',
         ]
         const idx = order.indexOf(type)
         const next = order[(idx + 1) % order.length]
