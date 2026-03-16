@@ -36,7 +36,7 @@ export function BoardItemText({
 
   return (
     <div
-      className={`w-full h-full rounded-md bg-[rgb(var(--bg))] shadow-sm overflow-hidden ${
+      className={`w-full h-full rounded-md bg-[rgb(var(--bg-muted))] shadow-sm overflow-hidden ${
         selected ? 'ring-2 ring-[rgb(var(--accent))]' : ''
       }`}
       onPointerDown={onPointerDown}

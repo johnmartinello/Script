@@ -13,28 +13,26 @@ export function HelpPanel() {
           <h3 className="font-medium mb-3">Top Bar Commands</h3>
           <ul className="space-y-2 text-sm">
             <li>
-              <span className="font-medium">Open</span> - Load a `.gscript` project file.
-            </li>
-            <li>
               <span className="font-medium">Save</span> - Save current project (auto-save path if
               already opened/saved once).
             </li>
             <li>
-              <span className="font-medium">Save As</span> - Save current project to a new
-              `.gscript` file.
+              <span className="font-medium">Reference</span> - Toggle the reference sidebar for
+              visual notes and boards.
             </li>
             <li>
-              <span className="font-medium">Export PDF</span> - Open print dialog with screenplay
-              formatting. Choose "Save as PDF".
+              <span className="font-medium">Theme toggle</span> - Use the sun/moon icon to switch
+              between light and dark mode.
             </li>
             <li>
-              <span className="font-medium">Export Dialogue JSON</span> - Export all dialogue lines
-              (canon and branch scenes) to a `.json` file for use in game engines or localization
-              tools.
-            </li>
-            <li>
-              <span className="font-medium">Theme</span> - Switch between `Light`, `Dark`, and
-              `System`.
+              <span className="font-medium">More</span> - Open the overflow menu with less frequent
+              file actions:
+              <span className="ml-1">
+                <span className="font-medium">Open</span>,{' '}
+                <span className="font-medium">Save As</span>,{' '}
+                <span className="font-medium">Export PDF</span>, and{' '}
+                <span className="font-medium">Export Dialogue JSON</span>.
+              </span>
             </li>
           </ul>
         </section>

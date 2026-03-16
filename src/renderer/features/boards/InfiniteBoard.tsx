@@ -85,6 +85,7 @@ export function InfiniteBoard({
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [editingTextItemId, setEditingTextItemId] = useState<string | null>(null)
   const pointerWorldRef = useRef({ x: board.viewport.cx, y: board.viewport.cy })
+  const knownItemIdsRef = useRef<Set<string>>(new Set(Object.keys(board.items)))
 
   useEffect(() => {
     if (!selectedItemId) return
@@ -92,6 +93,34 @@ export function InfiniteBoard({
     setSelectedItemId(null)
     setEditingTextItemId((current) => (current === selectedItemId ? null : current))
   }, [board.items, selectedItemId])
+
+  useEffect(() => {
+    knownItemIdsRef.current = new Set(Object.keys(board.items))
+    setSelectedItemId(null)
+    setEditingTextItemId(null)
+  }, [boardKey])
+
+  useEffect(() => {
+    const known = knownItemIdsRef.current
+    let newestEmptyTextItem: BoardTextItem | null = null
+
+    for (const item of Object.values(board.items)) {
+      if (known.has(item.id)) continue
+      if (item.type !== 'text') continue
+      const textItem = item as BoardTextItem
+      if (textItem.text.trim()) continue
+      if (!newestEmptyTextItem || textItem.createdAt > newestEmptyTextItem.createdAt) {
+        newestEmptyTextItem = textItem
+      }
+    }
+
+    knownItemIdsRef.current = new Set(Object.keys(board.items))
+
+    if (newestEmptyTextItem) {
+      setSelectedItemId(newestEmptyTextItem.id)
+      setEditingTextItemId(newestEmptyTextItem.id)
+    }
+  }, [board.items])
 
   useEffect(() => {
     const node = containerRef.current

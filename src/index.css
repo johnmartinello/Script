@@ -41,6 +41,32 @@
   }
 }
 
+@layer components {
+  .app-header-button {
+    @apply inline-flex items-center rounded-md px-2 py-1 text-xs md:text-sm text-[rgb(var(--text-muted))] border border-transparent bg-transparent hover:bg-[rgb(var(--bg))] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[rgb(var(--ring))];
+  }
+
+  .app-header-button-primary {
+    @apply text-[rgb(var(--text))] bg-[rgb(var(--bg))] border border-border hover:bg-[rgb(var(--bg))];
+  }
+
+  .app-header-button-active {
+    @apply bg-[rgb(var(--bg))] text-[rgb(var(--text))] border border-border;
+  }
+
+  .app-header-icon-button {
+    @apply inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent bg-transparent text-[rgb(var(--text-muted))] hover:bg-[rgb(var(--bg))] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[rgb(var(--ring))];
+  }
+
+  .app-header-menu-item {
+    @apply w-full px-3 py-1.5 text-left text-[rgb(var(--text-muted))] hover:bg-[rgb(var(--bg))] hover:text-[rgb(var(--text))] cursor-pointer;
+  }
+
+  .app-header-menu-separator {
+    @apply my-1 h-px bg-[rgb(var(--border))];
+  }
+}
+
 /* Keep graph controls consistent with dark UI tone */
 .react-flow {
   background: rgb(var(--bg-muted));

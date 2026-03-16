@@ -97,7 +97,7 @@ export function BoardsPanel() {
   const handleAddText = () => {
     if (!activeBoardKey || !activeBoard) return
     const { cx, cy } = activeBoard.viewport
-    addTextBoardItem(activeBoardKey, { x: cx - 120, y: cy - 80, text: '' })
+    addTextBoardItem(activeBoardKey, { x: cx - 160, y: cy - 95, text: '' })
   }
 
   const handleUploadImage = async (file: File | null) => {
