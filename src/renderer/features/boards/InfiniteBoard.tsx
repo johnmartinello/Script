@@ -50,6 +50,14 @@ interface DragState {
   startY: number
 }
 
+interface PressState {
+  itemId: string
+  startClientX: number
+  startClientY: number
+  startX: number
+  startY: number
+}
+
 interface ResizeState {
   itemId: string
   startClientX: number
@@ -71,9 +79,19 @@ export function InfiniteBoard({
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [size, setSize] = useState({ width: 1, height: 1 })
   const [panState, setPanState] = useState<PanState | null>(null)
+  const [pressState, setPressState] = useState<PressState | null>(null)
   const [dragState, setDragState] = useState<DragState | null>(null)
   const [resizeState, setResizeState] = useState<ResizeState | null>(null)
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
+  const [editingTextItemId, setEditingTextItemId] = useState<string | null>(null)
   const pointerWorldRef = useRef({ x: board.viewport.cx, y: board.viewport.cy })
+
+  useEffect(() => {
+    if (!selectedItemId) return
+    if (board.items[selectedItemId]) return
+    setSelectedItemId(null)
+    setEditingTextItemId((current) => (current === selectedItemId ? null : current))
+  }, [board.items, selectedItemId])
 
   useEffect(() => {
     const node = containerRef.current
@@ -98,6 +116,18 @@ export function InfiniteBoard({
           cx: panState.startViewport.cx - dx / board.viewport.zoom,
           cy: panState.startViewport.cy - dy / board.viewport.zoom,
         })
+      } else if (pressState && !dragState) {
+        const dx = event.clientX - pressState.startClientX
+        const dy = event.clientY - pressState.startClientY
+        if (Math.hypot(dx, dy) > 3) {
+          setDragState({
+            itemId: pressState.itemId,
+            startClientX: pressState.startClientX,
+            startClientY: pressState.startClientY,
+            startX: pressState.startX,
+            startY: pressState.startY,
+          })
+        }
       } else if (dragState) {
         const dx = event.clientX - dragState.startClientX
         const dy = event.clientY - dragState.startClientY
@@ -128,6 +158,7 @@ export function InfiniteBoard({
 
     const onUp = () => {
       setPanState(null)
+      setPressState(null)
       setDragState(null)
       setResizeState(null)
     }
@@ -138,7 +169,25 @@ export function InfiniteBoard({
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
-  }, [board.viewport.zoom, dragState, onUpdateItem, onViewportChange, panState, resizeState])
+  }, [board.viewport.zoom, dragState, onUpdateItem, onViewportChange, panState, pressState, resizeState])
+
+  useEffect(() => {
+    const onGlobalKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Delete') return
+      if (!selectedItemId) return
+      const target = event.target as HTMLElement | null
+      const tag = target?.tagName?.toLowerCase()
+      const typingInField =
+        tag === 'textarea' || tag === 'input' || !!target?.isContentEditable
+      if (typingInField) return
+      event.preventDefault()
+      onRemoveItem(selectedItemId)
+      setSelectedItemId(null)
+      setEditingTextItemId(null)
+    }
+    window.addEventListener('keydown', onGlobalKeyDown)
+    return () => window.removeEventListener('keydown', onGlobalKeyDown)
+  }, [onRemoveItem, selectedItemId])
 
   const sortedItems = useMemo(
     () =>
@@ -162,6 +211,8 @@ export function InfiniteBoard({
   const handleCanvasPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return
     ;(event.currentTarget as HTMLDivElement).focus()
+    setSelectedItemId(null)
+    setEditingTextItemId(null)
     setPanState({
       startClientX: event.clientX,
       startClientY: event.clientY,
@@ -224,7 +275,12 @@ export function InfiniteBoard({
   const onItemPointerDown = (item: BoardItem, event: PointerEvent<HTMLDivElement>) => {
     event.stopPropagation()
     if (event.button !== 0) return
-    setDragState({
+    containerRef.current?.focus()
+    setSelectedItemId(item.id)
+    if (item.type !== 'text' || editingTextItemId !== item.id) {
+      setEditingTextItemId(null)
+    }
+    setPressState({
       itemId: item.id,
       startClientX: event.clientX,
       startClientY: event.clientY,
@@ -284,7 +340,16 @@ export function InfiniteBoard({
             <div key={item.id} className="absolute" style={commonStyle}>
               <BoardItemText
                 item={textItem}
+                selected={selectedItemId === item.id}
                 onPointerDown={(event) => onItemPointerDown(item, event)}
+                isEditing={editingTextItemId === item.id}
+                onStartEdit={() => {
+                  setSelectedItemId(item.id)
+                  setEditingTextItemId(item.id)
+                }}
+                onFinishEdit={() => {
+                  setEditingTextItemId((current) => (current === item.id ? null : current))
+                }}
                 onResizeStart={(event) => onItemResizeStart(item, event)}
                 onTextChange={(text) => onUpdateItem(item.id, { text })}
                 onPasteImage={async (file) => {
@@ -311,6 +376,7 @@ export function InfiniteBoard({
           <div key={item.id} className="absolute" style={commonStyle}>
             <BoardItemImage
               item={imageItem}
+              selected={selectedItemId === item.id}
               onPointerDown={(event) => onItemPointerDown(item, event)}
               onResizeStart={(event) => onItemResizeStart(item, event)}
               onDelete={() => onRemoveItem(item.id)}
