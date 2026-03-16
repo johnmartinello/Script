@@ -285,6 +285,8 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
         }
       }
       const keepIds = new Set(nextScenes.map((s) => s.id))
+      const prevSceneIds = new Set(state.project.scenes.map((s) => s.id))
+      const createdSceneIds = new Set(nextScenes.filter((s) => !prevSceneIds.has(s.id)).map((s) => s.id))
       const removeIds = state.project.scenes.filter((s) => !keepIds.has(s.id)).map((s) => s.id)
       const nextNodePositions = { ...state.project.nodePositions }
       nextScenes.forEach((s, i) => {
@@ -296,8 +298,13 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
       const nextEdges = state.project.edges.filter(
         (e) => keepIds.has(e.sourceSceneId) && keepIds.has(e.targetSceneId)
       )
+      const activeSceneId = state.activeBeatId
+        ? nextScenes.find((s) => s.beats.some((b) => b.id === state.activeBeatId))?.id
+        : undefined
       const nextSelected =
-        state.selectedSceneId && keepIds.has(state.selectedSceneId)
+        activeSceneId && createdSceneIds.has(activeSceneId)
+          ? activeSceneId
+          : state.selectedSceneId && keepIds.has(state.selectedSceneId)
           ? state.selectedSceneId
           : nextScenes[0]?.id ?? null
       return {
