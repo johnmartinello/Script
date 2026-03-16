@@ -325,6 +325,9 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
       createdAt: now,
       updatedAt: now,
       text: params.text ?? '',
+      textFormat: 'plain',
+      textAlign: 'left',
+      boldAll: false,
     }
     set((state) => {
       if (!state.project) return state

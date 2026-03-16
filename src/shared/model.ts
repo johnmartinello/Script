@@ -104,6 +104,8 @@ export interface BoardViewport {
 }
 
 export type BoardItemType = 'text' | 'image'
+export type BoardTextFormat = 'plain' | 'html'
+export type BoardTextAlign = 'left' | 'center' | 'right'
 
 export interface BoardItemBase {
   id: string
@@ -120,6 +122,9 @@ export interface BoardItemBase {
 export interface BoardTextItem extends BoardItemBase {
   type: 'text'
   text: string
+  textFormat?: BoardTextFormat
+  textAlign?: BoardTextAlign
+  boldAll?: boolean
 }
 
 export interface BoardImageItem extends BoardItemBase {

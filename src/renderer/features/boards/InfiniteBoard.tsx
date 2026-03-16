@@ -374,7 +374,8 @@ export function InfiniteBoard({
                   setEditingTextItemId((current) => (current === item.id ? null : current))
                 }}
                 onResizeStart={(event) => onItemResizeStart(item, event)}
-                onTextChange={(text) => onUpdateItem(item.id, { text })}
+                onTextChange={(text, format) => onUpdateItem(item.id, { text, textFormat: format })}
+                onFormatChange={(patch) => onUpdateItem(item.id, patch)}
                 onPasteImage={async (file) => {
                   const dataUrl = await readFileAsDataUrl(file)
                   const dimensions = await getImageDimensions(dataUrl)

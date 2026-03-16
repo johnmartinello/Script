@@ -1,4 +1,4 @@
-import type { Project } from '@/shared/model'
+import type { BoardDocument, BoardItem, BoardTextItem, Project } from '@/shared/model'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -18,9 +18,34 @@ function isValidProject(value: unknown): value is Project {
 }
 
 function normalizeProject(raw: Project): Project {
+  const normalizeBoardItem = (item: BoardItem): BoardItem => {
+    if (item.type !== 'text') return item
+    const textItem = item as BoardTextItem
+    return {
+      ...textItem,
+      textFormat: textItem.textFormat ?? 'plain',
+      textAlign: textItem.textAlign ?? 'left',
+      boldAll: textItem.boldAll ?? false,
+    }
+  }
+
+  const normalizeBoardDocument = (board: BoardDocument): BoardDocument => {
+    const normalizedItems = Object.fromEntries(
+      Object.entries(board.items).map(([itemId, item]) => [itemId, normalizeBoardItem(item)])
+    )
+    return { ...board, items: normalizedItems }
+  }
+
+  const normalizedBoards = Object.fromEntries(
+    Object.entries(raw.boardsByKey ?? {}).map(([key, board]) => [
+      key,
+      board ? normalizeBoardDocument(board) : board,
+    ])
+  )
+
   return {
     ...raw,
-    boardsByKey: raw.boardsByKey ?? {},
+    boardsByKey: normalizedBoards,
   }
 }
 
