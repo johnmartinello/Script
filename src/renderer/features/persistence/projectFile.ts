@@ -12,7 +12,16 @@ function isValidProject(value: unknown): value is Project {
   if (!Array.isArray(value.edges)) return false
   if (!Array.isArray(value.chapters)) return false
   if (!isRecord(value.nodePositions)) return false
+  // boardsByKey is optional for backward compatibility
+  if ('boardsByKey' in value && value.boardsByKey != null && !isRecord(value.boardsByKey)) return false
   return true
+}
+
+function normalizeProject(raw: Project): Project {
+  return {
+    ...raw,
+    boardsByKey: raw.boardsByKey ?? {},
+  }
 }
 
 export async function openProject(): Promise<{ path: string; project: Project } | null> {
@@ -26,7 +35,7 @@ export async function openProject(): Promise<{ path: string; project: Project } 
       window.alert('Invalid project file format. This app now accepts only the current schema.')
       return null
     }
-    return { path: result.path, project: raw }
+    return { path: result.path, project: normalizeProject(raw) }
   } catch {
     window.alert('Could not parse project file.')
     return null

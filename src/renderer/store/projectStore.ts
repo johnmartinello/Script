@@ -6,6 +6,10 @@ import type {
   GraphEdge,
   GraphNodePosition,
   BranchMeta,
+  BoardKey,
+  BoardDocument,
+  BoardItem,
+  BoardViewport,
 } from '@/shared/model'
 import {
   createEmptyProject,
@@ -15,7 +19,36 @@ import {
 } from '@/shared/model'
 import { withRecomputedSceneNumbers } from '@/shared/sceneNumbering'
 
-export type ViewMode = 'editor' | 'graph' | 'split' | 'help'
+export type ViewMode = 'editor' | 'graph' | 'split' | 'help' | 'boards'
+
+export type BoardKind = 'scene' | 'character'
+export interface DerivedCharacter {
+  /** Stable key derived from normalized name. */
+  key: BoardKey
+  /** Display name (best-effort; first seen casing). */
+  name: string
+  /** Normalized name used for dedupe. */
+  normalized: string
+}
+
+function normalizeCharacterName(input: string): string {
+  return input.trim().replace(/\s+/g, ' ')
+}
+
+function boardKeyForScene(sceneId: string): BoardKey {
+  return `scene:${sceneId}`
+}
+
+function boardKeyForCharacterNormalized(normalized: string): BoardKey {
+  return `character:${normalized.toLowerCase()}`
+}
+
+function createEmptyBoardDocument(): BoardDocument {
+  return {
+    viewport: { cx: 0, cy: 0, zoom: 1 },
+    items: {},
+  }
+}
 
 interface ProjectState {
   /** null when no project is loaded (start screen). */
@@ -32,6 +65,9 @@ interface ProjectState {
   activeBeatType: Beat['type'] | null
   /** Beat id at the current editor selection (e.g. to show shortcut only on active beat). */
   activeBeatId: string | null
+
+  /** Currently open board key in the Boards section. */
+  selectedBoardKey: BoardKey | null
 }
 
 interface ProjectActions {
@@ -44,6 +80,19 @@ interface ProjectActions {
   toggleReferenceSidebar: () => void
   setActiveBeatType: (type: Beat['type'] | null) => void
   setActiveBeatId: (id: string | null) => void
+
+  /** Derived characters from all character-cue beats across scenes. */
+  getDerivedCharacters: () => DerivedCharacter[]
+  ensureBoard: (key: BoardKey) => void
+  ensureSceneBoard: (sceneId: string) => BoardKey
+  ensureCharacterBoard: (characterName: string) => BoardKey
+  setSelectedBoardKey: (key: BoardKey | null) => void
+  getBoard: (key: BoardKey) => BoardDocument | undefined
+  setBoardViewport: (key: BoardKey, viewport: BoardViewport) => void
+  addTextBoardItem: (key: BoardKey, params: { x: number; y: number; text?: string }) => string
+  addImageBoardItem: (key: BoardKey, params: { x: number; y: number; dataUrl: string; filename?: string | null }) => string
+  updateBoardItem: (key: BoardKey, itemId: string, patch: Partial<BoardItem>) => void
+  removeBoardItem: (key: BoardKey, itemId: string) => void
 
   addScene: (title?: string) => Scene
   addBranchScene: (params: {
@@ -128,6 +177,11 @@ function applySceneNumbers(project: Project | null): Project | null {
   return project ? withRecomputedSceneNumbers(project) : null
 }
 
+function normalizeProjectForBoards(project: Project | null): Project | null {
+  if (!project) return null
+  return { ...project, boardsByKey: project.boardsByKey ?? {} }
+}
+
 export const useProjectStore = create<ProjectState & ProjectActions>((set, get) => ({
   project: null,
   selectedSceneId: null,
@@ -137,8 +191,10 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   referenceSidebarOpen: false,
   activeBeatType: null,
   activeBeatId: null,
+  selectedBoardKey: null,
 
-  setProject: (project) => set({ project: applySceneNumbers(project), dirty: false }),
+  setProject: (project) =>
+    set({ project: applySceneNumbers(normalizeProjectForBoards(project)), dirty: false }),
   updateProject: (patch) =>
     set((state) => {
       if (!state.project) return state
@@ -156,6 +212,195 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   setActiveBeatType: (type) => set({ activeBeatType: type }),
   setActiveBeatId: (id) => set({ activeBeatId: id }),
 
+  getDerivedCharacters: () => {
+    const state = get()
+    const project = state.project
+    if (!project) return []
+    const seen = new Map<string, DerivedCharacter>()
+    for (const scene of project.scenes) {
+      for (const beat of scene.beats) {
+        if (beat.type !== 'character-cue') continue
+        const normalized = normalizeCharacterName(beat.text ?? '')
+        if (!normalized) continue
+        const normKey = normalized.toLowerCase()
+        if (!seen.has(normKey)) {
+          seen.set(normKey, {
+            normalized,
+            name: normalized,
+            key: boardKeyForCharacterNormalized(normalized),
+          })
+        }
+      }
+    }
+    return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name))
+  },
+
+  ensureBoard: (key) => {
+    set((state) => {
+      if (!state.project) return state
+      const boardsByKey = state.project.boardsByKey ?? {}
+      if (boardsByKey[key]) return state
+      return {
+        project: applySceneNumbers({
+          ...state.project,
+          boardsByKey: { ...boardsByKey, [key]: createEmptyBoardDocument() },
+        }),
+        dirty: true,
+      }
+    })
+  },
+
+  ensureSceneBoard: (sceneId) => {
+    const key = boardKeyForScene(sceneId)
+    get().ensureBoard(key)
+    return key
+  },
+
+  ensureCharacterBoard: (characterName) => {
+    const normalized = normalizeCharacterName(characterName)
+    const key = boardKeyForCharacterNormalized(normalized)
+    get().ensureBoard(key)
+    return key
+  },
+
+  setSelectedBoardKey: (key) => set({ selectedBoardKey: key }),
+
+  getBoard: (key) => {
+    const state = get()
+    const project = state.project
+    return project?.boardsByKey?.[key]
+  },
+
+  setBoardViewport: (key, viewport) => {
+    set((state) => {
+      if (!state.project) return state
+      const boardsByKey = state.project.boardsByKey ?? {}
+      const doc = boardsByKey[key] ?? createEmptyBoardDocument()
+      return {
+        project: applySceneNumbers({
+          ...state.project,
+          boardsByKey: {
+            ...boardsByKey,
+            [key]: { ...doc, viewport: { ...viewport } },
+          },
+        }),
+        dirty: true,
+      }
+    })
+  },
+
+  addTextBoardItem: (key, params) => {
+    const id = crypto.randomUUID()
+    const now = Date.now()
+    const item: BoardItem = {
+      id,
+      type: 'text',
+      x: params.x,
+      y: params.y,
+      w: 260,
+      h: 160,
+      z: now,
+      createdAt: now,
+      updatedAt: now,
+      text: params.text ?? '',
+    }
+    set((state) => {
+      if (!state.project) return state
+      const boardsByKey = state.project.boardsByKey ?? {}
+      const doc = boardsByKey[key] ?? createEmptyBoardDocument()
+      return {
+        project: applySceneNumbers({
+          ...state.project,
+          boardsByKey: {
+            ...boardsByKey,
+            [key]: { ...doc, items: { ...doc.items, [id]: item } },
+          },
+        }),
+        dirty: true,
+      }
+    })
+    return id
+  },
+
+  addImageBoardItem: (key, params) => {
+    const id = crypto.randomUUID()
+    const now = Date.now()
+    const item: BoardItem = {
+      id,
+      type: 'image',
+      x: params.x,
+      y: params.y,
+      w: 320,
+      h: 240,
+      z: now,
+      createdAt: now,
+      updatedAt: now,
+      dataUrl: params.dataUrl,
+      filename: params.filename ?? null,
+    }
+    set((state) => {
+      if (!state.project) return state
+      const boardsByKey = state.project.boardsByKey ?? {}
+      const doc = boardsByKey[key] ?? createEmptyBoardDocument()
+      return {
+        project: applySceneNumbers({
+          ...state.project,
+          boardsByKey: {
+            ...boardsByKey,
+            [key]: { ...doc, items: { ...doc.items, [id]: item } },
+          },
+        }),
+        dirty: true,
+      }
+    })
+    return id
+  },
+
+  updateBoardItem: (key, itemId, patch) => {
+    set((state) => {
+      if (!state.project) return state
+      const boardsByKey = state.project.boardsByKey ?? {}
+      const doc = boardsByKey[key]
+      if (!doc) return state
+      const existing = doc.items[itemId]
+      if (!existing) return state
+      const next = {
+        ...existing,
+        ...patch,
+        updatedAt: Date.now(),
+      } as BoardItem
+      return {
+        project: applySceneNumbers({
+          ...state.project,
+          boardsByKey: {
+            ...boardsByKey,
+            [key]: { ...doc, items: { ...doc.items, [itemId]: next } },
+          },
+        }),
+        dirty: true,
+      }
+    })
+  },
+
+  removeBoardItem: (key, itemId) => {
+    set((state) => {
+      if (!state.project) return state
+      const boardsByKey = state.project.boardsByKey ?? {}
+      const doc = boardsByKey[key]
+      if (!doc) return state
+      if (!doc.items[itemId]) return state
+      const nextItems = { ...doc.items }
+      delete nextItems[itemId]
+      return {
+        project: applySceneNumbers({
+          ...state.project,
+          boardsByKey: { ...boardsByKey, [key]: { ...doc, items: nextItems } },
+        }),
+        dirty: true,
+      }
+    })
+  },
+
   addScene: (title) => {
     const headingBeatId = newBeatId()
     const headingText = title?.trim() || 'Untitled Scene'
@@ -172,6 +417,12 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
         nodePositions: {
           ...state.project.nodePositions,
           [scene.id]: { x: 100 + state.project!.scenes.length * 180, y: 100 },
+        },
+        boardsByKey: {
+          ...(state.project.boardsByKey ?? {}),
+          [boardKeyForScene(scene.id)]: (state.project.boardsByKey ?? {})[
+            boardKeyForScene(scene.id)
+          ] ?? createEmptyBoardDocument(),
         },
       }
       return {
@@ -221,6 +472,12 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
         nodePositions: {
           ...currentState.project.nodePositions,
           [scene.id]: { x: 120 + currentState.project.scenes.length * 120, y: 220 },
+        },
+        boardsByKey: {
+          ...(currentState.project.boardsByKey ?? {}),
+          [boardKeyForScene(scene.id)]: (currentState.project.boardsByKey ?? {})[
+            boardKeyForScene(scene.id)
+          ] ?? createEmptyBoardDocument(),
         },
       }
       return {
@@ -274,6 +531,11 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
         ),
         nodePositions: Object.fromEntries(
           Object.entries(state.project.nodePositions).filter(([id]) => id !== sceneId)
+        ),
+        boardsByKey: Object.fromEntries(
+          Object.entries(state.project.boardsByKey ?? {}).filter(
+            ([key]) => key !== boardKeyForScene(sceneId)
+          )
         ),
       }
       return {
@@ -347,9 +609,17 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
           },
           ...canonScenes.slice(1),
         ]
+        const ensuredBoardsByKey: Partial<Record<BoardKey, BoardDocument>> = {
+          ...(state.project.boardsByKey ?? {}),
+        }
+        for (const scene of [...nextCanonScenes, ...branchScenes]) {
+          const key = boardKeyForScene(scene.id)
+          ensuredBoardsByKey[key] = ensuredBoardsByKey[key] ?? createEmptyBoardDocument()
+        }
         const nextProject = {
           ...state.project,
           scenes: [...nextCanonScenes, ...branchScenes],
+          boardsByKey: ensuredBoardsByKey,
         }
         return { project: applySceneNumbers(nextProject), dirty: true }
       }
@@ -415,6 +685,16 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
       const nextEdges = state.project.edges.filter(
         (e) => keepIds.has(e.sourceSceneId) && keepIds.has(e.targetSceneId)
       )
+      const nextBoardsByKey: Partial<Record<BoardKey, BoardDocument>> = {
+        ...(state.project.boardsByKey ?? {}),
+      }
+      for (const scene of nextScenes) {
+        const key = boardKeyForScene(scene.id)
+        nextBoardsByKey[key] = nextBoardsByKey[key] ?? createEmptyBoardDocument()
+      }
+      removeCanonIds.forEach((id) => {
+        delete nextBoardsByKey[boardKeyForScene(id)]
+      })
       const activeSceneId = state.activeBeatId
         ? nextCanonScenes.find((s) => s.beats.some((b) => b.id === state.activeBeatId))?.id
         : undefined
@@ -430,6 +710,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
           scenes: nextScenes,
           edges: nextEdges,
           nodePositions: nextNodePositions,
+          boardsByKey: nextBoardsByKey,
         }),
         selectedSceneId: nextSelected,
         dirty: true,
@@ -575,6 +856,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
     set({
       project: createEmptyProject(),
       selectedSceneId: null,
+      selectedBoardKey: null,
       projectFilePath: null,
       dirty: false,
     })

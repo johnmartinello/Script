@@ -92,6 +92,54 @@ export interface GraphNodePosition {
   y: number
 }
 
+export type BoardKey = `scene:${string}` | `character:${string}`
+
+export interface BoardViewport {
+  /** World-space x coordinate at viewport center. */
+  cx: number
+  /** World-space y coordinate at viewport center. */
+  cy: number
+  /** Zoom scale (1 = 100%). */
+  zoom: number
+}
+
+export type BoardItemType = 'text' | 'image'
+
+export interface BoardItemBase {
+  id: string
+  type: BoardItemType
+  x: number
+  y: number
+  w: number
+  h: number
+  z: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface BoardTextItem extends BoardItemBase {
+  type: 'text'
+  text: string
+}
+
+export interface BoardImageItem extends BoardItemBase {
+  type: 'image'
+  /**
+   * Image stored as a Data URL (e.g. "data:image/png;base64,...") so the board is
+   * self-contained inside the .gscript JSON.
+   */
+  dataUrl: string
+  /** Optional original filename for UX. */
+  filename?: string | null
+}
+
+export type BoardItem = BoardTextItem | BoardImageItem
+
+export interface BoardDocument {
+  viewport: BoardViewport
+  items: Record<string, BoardItem>
+}
+
 /** Edge in the story graph. Source/target are scene ids. */
 export interface GraphEdge {
   id: string
@@ -115,6 +163,8 @@ export interface Project {
   chapters: ChapterGroup[]
   /** Scene id -> { x, y } for React Flow layout. */
   nodePositions: Record<string, GraphNodePosition>
+  /** Milanote-like boards keyed by scene or character. */
+  boardsByKey?: Partial<Record<BoardKey, BoardDocument>>
 }
 
 export function createEmptyProject(name: string = 'Untitled'): Project {
@@ -125,6 +175,7 @@ export function createEmptyProject(name: string = 'Untitled'): Project {
     edges: [],
     chapters: [],
     nodePositions: {},
+    boardsByKey: {},
   }
 }
 

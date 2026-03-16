@@ -53,6 +53,10 @@ export function HelpPanel() {
               <span className="font-medium">Split</span> - Editor and graph side-by-side.
             </li>
             <li>
+              <span className="font-medium">Boards</span> - Infinite visual reference canvases for
+              scenes and characters.
+            </li>
+            <li>
               <span className="font-medium">Help</span> - This reference page.
             </li>
           </ul>
