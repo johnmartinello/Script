@@ -2,17 +2,23 @@ import type { BoardKey, Scene } from '@/shared/model'
 import type { DerivedCharacter } from '@/renderer/store/projectStore'
 
 interface BoardsSidebarProps {
+  projectBoardKey: BoardKey | null
+  projectName: string | null
   scenes: Scene[]
   characters: DerivedCharacter[]
   selectedBoardKey: BoardKey | null
+  onSelectProject: () => void
   onSelectScene: (sceneId: string) => void
   onSelectCharacter: (name: string) => void
 }
 
 export function BoardsSidebar({
+  projectBoardKey,
+  projectName,
   scenes,
   characters,
   selectedBoardKey,
+  onSelectProject,
   onSelectScene,
   onSelectCharacter,
 }: BoardsSidebarProps) {
@@ -21,11 +27,30 @@ export function BoardsSidebar({
       <div className="p-3 border-b border-border">
         <h2 className="font-medium">Visual Boards</h2>
         <p className="text-xs text-[rgb(var(--text-muted))] mt-1">
-          One infinite canvas per scene and character.
+          One infinite canvas per project, scene, and character.
         </p>
       </div>
 
       <div className="flex-1 overflow-auto p-3 space-y-4">
+        <section>
+          <h3 className="text-xs uppercase tracking-wide text-[rgb(var(--text-muted))] mb-2">Project</h3>
+          {projectName && projectBoardKey ? (
+            <button
+              type="button"
+              onClick={onSelectProject}
+              className={`w-full text-left px-2 py-1.5 rounded border text-sm ${
+                selectedBoardKey === projectBoardKey
+                  ? 'bg-[rgb(var(--accent))] text-white border-transparent'
+                  : 'bg-[rgb(var(--bg))] border-border hover:bg-[rgb(var(--border))]'
+              }`}
+            >
+              {projectName}
+            </button>
+          ) : (
+            <p className="text-xs text-[rgb(var(--text-muted))]">No project loaded.</p>
+          )}
+        </section>
+
         <section>
           <h3 className="text-xs uppercase tracking-wide text-[rgb(var(--text-muted))] mb-2">Scenes</h3>
           <div className="space-y-1">

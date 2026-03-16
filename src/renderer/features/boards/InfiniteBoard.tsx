@@ -315,12 +315,6 @@ export function InfiniteBoard({
       onWheel={handleWheel}
       onPaste={handlePaste}
       className="relative h-full w-full overflow-hidden outline-none bg-[rgb(var(--bg))]"
-      style={{
-        backgroundImage:
-          'linear-gradient(to right, rgba(120,120,120,0.15) 1px, transparent 1px), linear-gradient(to bottom, rgba(120,120,120,0.15) 1px, transparent 1px)',
-        backgroundSize: `${48 * board.viewport.zoom}px ${48 * board.viewport.zoom}px`,
-        backgroundPosition: `${(-board.viewport.cx * board.viewport.zoom + size.width / 2) % (48 * board.viewport.zoom)}px ${(-board.viewport.cy * board.viewport.zoom + size.height / 2) % (48 * board.viewport.zoom)}px`,
-      }}
     >
       {sortedItems.map((item) => {
         const topLeft = worldToScreen({ x: item.x, y: item.y }, board.viewport, size)

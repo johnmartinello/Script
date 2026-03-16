@@ -92,7 +92,7 @@ export interface GraphNodePosition {
   y: number
 }
 
-export type BoardKey = `scene:${string}` | `character:${string}`
+export type BoardKey = `project:${string}` | `scene:${string}` | `character:${string}`
 
 export interface BoardViewport {
   /** World-space x coordinate at viewport center. */
@@ -163,7 +163,7 @@ export interface Project {
   chapters: ChapterGroup[]
   /** Scene id -> { x, y } for React Flow layout. */
   nodePositions: Record<string, GraphNodePosition>
-  /** Milanote-like boards keyed by scene or character. */
+  /** Milanote-like boards keyed by project, scene, or character. */
   boardsByKey?: Partial<Record<BoardKey, BoardDocument>>
 }
 

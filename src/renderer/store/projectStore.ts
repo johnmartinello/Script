@@ -21,7 +21,7 @@ import { withRecomputedSceneNumbers } from '@/shared/sceneNumbering'
 
 export type ViewMode = 'editor' | 'graph' | 'split' | 'help' | 'boards' | 'stats'
 
-export type BoardKind = 'scene' | 'character'
+export type BoardKind = 'project' | 'scene' | 'character'
 export interface DerivedCharacter {
   /** Stable key derived from normalized name. */
   key: BoardKey
@@ -37,6 +37,10 @@ function normalizeCharacterName(input: string): string {
 
 function boardKeyForScene(sceneId: string): BoardKey {
   return `scene:${sceneId}`
+}
+
+function boardKeyForProject(projectId: string): BoardKey {
+  return `project:${projectId}`
 }
 
 function boardKeyForCharacterNormalized(normalized: string): BoardKey {
@@ -87,6 +91,7 @@ interface ProjectActions {
   /** Derived characters from all character-cue beats across scenes. */
   getDerivedCharacters: () => DerivedCharacter[]
   ensureBoard: (key: BoardKey) => void
+  ensureProjectBoard: () => BoardKey | null
   ensureSceneBoard: (sceneId: string) => BoardKey
   ensureCharacterBoard: (characterName: string) => BoardKey
   setSelectedBoardKey: (key: BoardKey | null) => void
@@ -257,6 +262,14 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
         dirty: true,
       }
     })
+  },
+
+  ensureProjectBoard: () => {
+    const project = get().project
+    if (!project) return null
+    const key = boardKeyForProject(project.id)
+    get().ensureBoard(key)
+    return key
   },
 
   ensureSceneBoard: (sceneId) => {

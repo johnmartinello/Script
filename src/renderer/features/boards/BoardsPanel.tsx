@@ -7,8 +7,15 @@ import { readFileAsDataUrl } from './imageUtils'
 
 function boardTitleFromKey(
   boardKey: BoardKey,
-  context: { sceneTitleById: Map<string, string>; characterNameByKey: Map<BoardKey, string> }
+  context: {
+    projectName: string | null
+    sceneTitleById: Map<string, string>
+    characterNameByKey: Map<BoardKey, string>
+  }
 ): string {
+  if (boardKey.startsWith('project:')) {
+    return context.projectName ? `${context.projectName} Board` : 'Project Board'
+  }
   if (boardKey.startsWith('scene:')) {
     const sceneId = boardKey.slice('scene:'.length)
     return context.sceneTitleById.get(sceneId) ?? 'Scene Board'
@@ -20,6 +27,7 @@ export function BoardsPanel() {
   const project = useProjectStore((s) => s.project)
   const selectedBoardKey = useProjectStore((s) => s.selectedBoardKey)
   const setSelectedBoardKey = useProjectStore((s) => s.setSelectedBoardKey)
+  const ensureProjectBoard = useProjectStore((s) => s.ensureProjectBoard)
   const ensureSceneBoard = useProjectStore((s) => s.ensureSceneBoard)
   const ensureCharacterBoard = useProjectStore((s) => s.ensureCharacterBoard)
   const getDerivedCharacters = useProjectStore((s) => s.getDerivedCharacters)
@@ -33,14 +41,20 @@ export function BoardsPanel() {
 
   const scenes = project?.scenes ?? []
   const characters = getDerivedCharacters()
+  const projectBoardKey = project ? (`project:${project.id}` as BoardKey) : null
 
   useEffect(() => {
     if (!project) return
     if (selectedBoardKey && getBoard(selectedBoardKey)) return
+    const key = ensureProjectBoard()
+    if (key) {
+      setSelectedBoardKey(key)
+      return
+    }
     const firstScene = project.scenes[0]
     if (firstScene) {
-      const key = ensureSceneBoard(firstScene.id)
-      setSelectedBoardKey(key)
+      const sceneKey = ensureSceneBoard(firstScene.id)
+      setSelectedBoardKey(sceneKey)
       return
     }
     const firstCharacter = characters[0]
@@ -51,6 +65,7 @@ export function BoardsPanel() {
   }, [
     characters,
     ensureCharacterBoard,
+    ensureProjectBoard,
     ensureSceneBoard,
     getBoard,
     project,
@@ -72,7 +87,11 @@ export function BoardsPanel() {
 
   const activeTitle =
     activeBoardKey && activeBoard
-      ? boardTitleFromKey(activeBoardKey, { sceneTitleById, characterNameByKey })
+      ? boardTitleFromKey(activeBoardKey, {
+          projectName: project?.name ?? null,
+          sceneTitleById,
+          characterNameByKey,
+        })
       : 'No board selected'
 
   const handleAddText = () => {
@@ -96,9 +115,15 @@ export function BoardsPanel() {
   return (
     <div className="flex-1 min-w-0 h-full flex overflow-hidden">
       <BoardsSidebar
+        projectBoardKey={projectBoardKey}
+        projectName={project?.name ?? null}
         scenes={scenes}
         characters={characters}
         selectedBoardKey={activeBoardKey}
+        onSelectProject={() => {
+          const key = ensureProjectBoard()
+          if (key) setSelectedBoardKey(key)
+        }}
         onSelectScene={(sceneId) => {
           const key = ensureSceneBoard(sceneId)
           setSelectedBoardKey(key)
@@ -147,7 +172,7 @@ export function BoardsPanel() {
         <div className="flex-1 min-h-0">
           {!activeBoardKey || !activeBoard ? (
             <div className="h-full w-full flex items-center justify-center text-sm text-[rgb(var(--text-muted))]">
-              Select a scene or character board.
+              Select a project, scene, or character board.
             </div>
           ) : (
             <InfiniteBoard
