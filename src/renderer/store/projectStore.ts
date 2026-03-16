@@ -19,7 +19,7 @@ import {
 } from '@/shared/model'
 import { withRecomputedSceneNumbers } from '@/shared/sceneNumbering'
 
-export type ViewMode = 'editor' | 'graph' | 'split' | 'help' | 'boards'
+export type ViewMode = 'editor' | 'graph' | 'split' | 'help' | 'boards' | 'stats'
 
 export type BoardKind = 'scene' | 'character'
 export interface DerivedCharacter {

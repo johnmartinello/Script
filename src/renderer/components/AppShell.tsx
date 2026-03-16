@@ -5,7 +5,8 @@ import { SceneList } from './SceneList'
 import { EditorPanel } from '@/renderer/features/editor/EditorPanel'
 import { GraphPanel } from '@/renderer/features/graph/GraphPanel'
 import { HelpPanel } from '@/renderer/features/help/HelpPanel'
-import { BoardsPanel } from '@/renderer/features/boards/BoardsPanel'
+import { BoardsPanel } from '../features/boards/BoardsPanel'
+import { StatsPanel } from '../features/stats/StatsPanel'
 import { openProject, saveProject } from '@/renderer/features/persistence/projectFile'
 import { printScreenplay } from '@/renderer/features/export/screenplayToHtml'
 import { exportDialogueJson } from '@/renderer/features/export/dialogueToJson'
@@ -137,7 +138,7 @@ export function AppShell() {
         </div>
       </header>
       <main className="flex-1 flex min-h-0 overflow-hidden">
-        {viewMode !== 'help' && viewMode !== 'boards' && (
+        {viewMode !== 'help' && viewMode !== 'boards' && viewMode !== 'stats' && (
           <aside className="w-56 h-full min-h-0 border-r border-border bg-[rgb(var(--bg-muted))] flex flex-col shrink-0 overflow-hidden">
             <SceneList />
           </aside>
@@ -157,8 +158,11 @@ export function AppShell() {
           )}
           {viewMode === 'help' && <HelpPanel />}
           {viewMode === 'boards' && <BoardsPanel />}
+          {viewMode === 'stats' && <StatsPanel />}
         </section>
-        {viewMode !== 'help' && viewMode !== 'boards' && referenceSidebarOpen && <ReferenceSidebar />}
+        {viewMode !== 'help' && viewMode !== 'boards' && viewMode !== 'stats' && referenceSidebarOpen && (
+          <ReferenceSidebar />
+        )}
       </main>
     </div>
   )
@@ -232,7 +236,7 @@ function ViewModeToggles() {
   const setViewMode = useProjectStore((s) => s.setViewMode)
   return (
     <div className="flex rounded border border-border overflow-hidden">
-      {(['editor', 'graph', 'split', 'boards', 'help'] as const).map((mode) => (
+      {(['editor', 'graph', 'split', 'boards', 'stats', 'help'] as const).map((mode) => (
         <button
           key={mode}
           type="button"
