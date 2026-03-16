@@ -7,6 +7,7 @@ import { GraphPanel } from '@/renderer/features/graph/GraphPanel'
 import { HelpPanel } from '@/renderer/features/help/HelpPanel'
 import { openProject, saveProject } from '@/renderer/features/persistence/projectFile'
 import { printScreenplay } from '@/renderer/features/export/screenplayToHtml'
+import { exportDialogueJson } from '@/renderer/features/export/dialogueToJson'
 import { ReferenceSidebar } from '@/renderer/features/reference/ReferenceSidebar'
 
 export function AppShell() {
@@ -85,6 +86,10 @@ export function AppShell() {
     printScreenplay(project)
   }
 
+  const handleExportDialogueJson = () => {
+    exportDialogueJson(project)
+  }
+
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-[rgb(var(--bg))] text-[rgb(var(--text))]">
       <header className="border-b border-border px-4 py-2 flex items-center justify-between shrink-0">
@@ -103,6 +108,7 @@ export function AppShell() {
             onSave={handleSave}
             onSaveAs={handleSaveAs}
             onExportPdf={handleExportPdf}
+            onExportDialogueJson={handleExportDialogueJson}
           />
           <select
             value={theme}
@@ -162,12 +168,14 @@ function FileMenu({
   onSave,
   onSaveAs,
   onExportPdf,
+  onExportDialogueJson,
 }: {
   onNew: () => void
   onOpen: () => void
   onSave: () => void
   onSaveAs: () => void
   onExportPdf: () => void
+  onExportDialogueJson: () => void
 }) {
   return (
     <div className="flex gap-1">
@@ -205,6 +213,13 @@ function FileMenu({
         className="px-2 py-1 text-sm rounded border border-border bg-[rgb(var(--bg-muted))] hover:bg-[rgb(var(--border))]"
       >
         Export PDF
+      </button>
+      <button
+        type="button"
+        onClick={onExportDialogueJson}
+        className="px-2 py-1 text-sm rounded border border-border bg-[rgb(var(--bg-muted))] hover:bg-[rgb(var(--border))]"
+      >
+        Export Dialogue JSON
       </button>
     </div>
   )

@@ -28,6 +28,11 @@ export function HelpPanel() {
               formatting. Choose "Save as PDF".
             </li>
             <li>
+              <span className="font-medium">Export Dialogue JSON</span> - Export all dialogue lines
+              (canon and branch scenes) to a `.json` file for use in game engines or localization
+              tools.
+            </li>
+            <li>
               <span className="font-medium">Theme</span> - Switch between `Light`, `Dark`, and
               `System`.
             </li>

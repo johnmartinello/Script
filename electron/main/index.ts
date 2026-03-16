@@ -146,3 +146,29 @@ ipcMain.handle(
     }
   }
 )
+
+ipcMain.handle(
+  'export:dialogue-json',
+  async (_event, { json, projectName }: { json: string; projectName: string }) => {
+    const safeBaseName = (projectName || 'dialogue').trim() || 'dialogue'
+    const result = await dialog.showSaveDialog({
+      defaultPath: `${safeBaseName}-dialogue.json`,
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+    })
+
+    if (result.canceled || !result.filePath) {
+      return { ok: false, canceled: true }
+    }
+
+    try {
+      await writeFile(result.filePath, json, 'utf-8')
+      return { ok: true, path: result.filePath }
+    } catch (error) {
+      return {
+        ok: false,
+        canceled: false,
+        error: error instanceof Error ? error.message : 'Failed to export dialogue JSON',
+      }
+    }
+  }
+)
