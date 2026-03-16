@@ -104,3 +104,45 @@ ipcMain.handle('project:save', async (_event, { path: filePath, data }: { path: 
   await writeFile(pathToWrite, data, 'utf-8')
   return { path: pathToWrite }
 })
+
+ipcMain.handle(
+  'export:pdf',
+  async (_event, { html, projectName }: { html: string; projectName: string }) => {
+    const result = await dialog.showSaveDialog({
+      defaultPath: `${(projectName || 'screenplay').trim() || 'screenplay'}.pdf`,
+      filters: [{ name: 'PDF', extensions: ['pdf'] }],
+    })
+    if (result.canceled || !result.filePath) {
+      return { ok: false, canceled: true }
+    }
+
+    const printWindow = new BrowserWindow({
+      show: false,
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    })
+
+    try {
+      const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(html)}`
+      await printWindow.loadURL(dataUrl)
+      const pdfBuffer = await printWindow.webContents.printToPDF({
+        printBackground: true,
+        pageSize: 'Letter',
+      })
+      await writeFile(result.filePath, pdfBuffer)
+      return { ok: true, path: result.filePath }
+    } catch (error) {
+      return {
+        ok: false,
+        canceled: false,
+        error: error instanceof Error ? error.message : 'Failed to export PDF',
+      }
+    } finally {
+      if (!printWindow.isDestroyed()) {
+        printWindow.close()
+      }
+    }
+  }
+)

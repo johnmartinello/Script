@@ -13,7 +13,7 @@ interface ScreenplayExportOptions {
 }
 
 export function screenplayToHtml(project: Project, options: ScreenplayExportOptions = {}): string {
-  const includeBranchAppendix = options.includeBranchAppendix ?? false
+  const includeBranchAppendix = options.includeBranchAppendix ?? true
   const parts: string[] = []
   const canonScenes = project.scenes.filter((scene) => scene.sceneKind === 'canon')
   const branchScenes = project.scenes.filter((scene) => scene.sceneKind === 'branch')
@@ -107,12 +107,17 @@ ${parts.join('\n')}
 
 export function printScreenplay(project: Project, options: ScreenplayExportOptions = {}): void {
   const html = screenplayToHtml(project, options)
-  const win = window.open('', '_blank')
-  if (!win) return
-  win.document.write(html)
-  win.document.close()
-  win.focus()
-  setTimeout(() => {
-    win.print()
-  }, 300)
+  window.ipcRenderer
+    .invoke<{ ok: boolean; canceled?: boolean; error?: string }>('export:pdf', {
+      html,
+      projectName: project.name,
+    })
+    .then((result) => {
+      if (!result.ok && !result.canceled) {
+        window.alert(result.error || 'Failed to export PDF.')
+      }
+    })
+    .catch(() => {
+      window.alert('Failed to export PDF.')
+    })
 }
