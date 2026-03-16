@@ -37,22 +37,6 @@ export const BeatBlock = Node.create<BeatOptions>({
         parseHTML: (el) => el.getAttribute('data-beat-id') ?? '',
         renderHTML: (attrs) => ({ 'data-beat-id': attrs.beatId }),
       },
-      options: {
-        default: null,
-        parseHTML: (el) => {
-          const raw = el.getAttribute('data-options')
-          if (!raw) return null
-          try {
-            return JSON.parse(raw)
-          } catch {
-            return null
-          }
-        },
-        renderHTML: (attrs) => {
-          if (!attrs.options) return {}
-          return { 'data-options': JSON.stringify(attrs.options) }
-        },
-      },
     }
   },
 
@@ -84,10 +68,7 @@ export const BeatBlock = Node.create<BeatOptions>({
         const nextType = nextBeatType(beatType)
         const pos = $pos.after()
         const beatId = crypto.randomUUID()
-        const content =
-          nextType === 'choice-point'
-            ? { type: 'beat', attrs: { beatType: nextType, beatId, options: [] }, content: [] }
-            : { type: 'beat', attrs: { beatType: nextType, beatId, options: null }, content: [] }
+        const content = { type: 'beat', attrs: { beatType: nextType, beatId }, content: [] }
         editor.chain().insertContentAt(pos, content).focus(pos + 1).run()
         return true
       },
@@ -97,8 +78,7 @@ export const BeatBlock = Node.create<BeatOptions>({
       'Mod-4': ({ editor }) => setCurrentBeatType(editor, 'dialogue'),
       'Mod-5': ({ editor }) => setCurrentBeatType(editor, 'parenthetical'),
       'Mod-6': ({ editor }) => setCurrentBeatType(editor, 'transition'),
-      'Mod-7': ({ editor }) => setCurrentBeatType(editor, 'choice-point'),
-      'Mod-8': ({ editor }) => setCurrentBeatType(editor, 'set-variable'),
+      'Mod-7': ({ editor }) => setCurrentBeatType(editor, 'set-variable'),
     }
   },
 })
@@ -117,8 +97,6 @@ function nextBeatType(current: BeatType): BeatType {
       return 'dialogue'
     case 'transition':
       return 'scene-heading'
-    case 'choice-point':
-      return 'action'
     case 'set-variable':
       return 'action'
     default:
@@ -136,12 +114,6 @@ function setCurrentBeatType(editor: import('@tiptap/core').Editor, type: BeatTyp
   const nextAttrs: Record<string, unknown> = {
     ...attrs,
     beatType: type,
-  }
-  if (type === 'choice-point' && !Array.isArray(attrs.options)) {
-    nextAttrs.options = []
-  }
-  if (type !== 'choice-point') {
-    nextAttrs.options = null
   }
   const tr = state.tr.setNodeMarkup($pos.before(), undefined, nextAttrs)
   view.dispatch(tr)

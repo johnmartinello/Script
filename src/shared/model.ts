@@ -10,7 +10,6 @@ export type BeatType =
   | 'dialogue'
   | 'parenthetical'
   | 'transition'
-  | 'choice-point'
   | 'set-variable'
 
 export type VariableType = 'boolean' | 'integer' | 'string'
@@ -51,19 +50,6 @@ export interface BeatTransition extends BeatBase {
   text: string
 }
 
-/** Phase 1: simple condition as string (e.g. "hasKey == true"). */
-export interface ChoiceOption {
-  id: string
-  label: string
-  targetSceneId: string | null
-  condition: string
-}
-
-export interface BeatChoicePoint extends BeatBase {
-  type: 'choice-point'
-  options: ChoiceOption[]
-}
-
 export interface BeatSetVariable extends BeatBase {
   type: 'set-variable'
   variableId: string
@@ -77,7 +63,6 @@ export type Beat =
   | BeatDialogue
   | BeatParenthetical
   | BeatTransition
-  | BeatChoicePoint
   | BeatSetVariable
 
 export interface Scene {
@@ -102,8 +87,6 @@ export interface GraphEdge {
   id: string
   sourceSceneId: string
   targetSceneId: string
-  /** Option id from a choice-point beat in source scene (if any). */
-  choiceOptionId: string | null
   label: string
   condition: string
 }
@@ -159,15 +142,6 @@ export function createScene(title: string = 'Untitled Scene'): Scene {
   }
 }
 
-export function createChoiceOption(): ChoiceOption {
-  return {
-    id: crypto.randomUUID(),
-    label: '',
-    targetSceneId: null,
-    condition: '',
-  }
-}
-
 export function createVariable(name: string = 'flag'): Variable {
   return {
     id: crypto.randomUUID(),
@@ -180,13 +154,12 @@ export function createVariable(name: string = 'flag'): Variable {
 export function createGraphEdge(
   sourceSceneId: string,
   targetSceneId: string,
-  options: { choiceOptionId?: string | null; label?: string; condition?: string } = {}
+  options: { label?: string; condition?: string } = {}
 ): GraphEdge {
   return {
     id: crypto.randomUUID(),
     sourceSceneId,
     targetSceneId,
-    choiceOptionId: options.choiceOptionId ?? null,
     label: options.label ?? '',
     condition: options.condition ?? '',
   }

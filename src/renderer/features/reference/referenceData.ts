@@ -5,7 +5,6 @@ export type ReferenceSectionId =
   | 'dialogue'
   | 'parenthetical'
   | 'transition'
-  | 'choice-point'
   | 'set-variable'
 
 export interface ReferenceEntry {
@@ -207,31 +206,6 @@ export const referenceSections: ReferenceSection[] = [
         description:
           'Explicitly call out the screen going to black, often for dramatic emphasis.',
         example: 'FADE TO BLACK.',
-      },
-    ],
-  },
-  {
-    id: 'choice-point',
-    title: 'Choice Point',
-    summary:
-      'A branching moment in the game script. Each option links to a different scene and can carry conditions.',
-    shortcuts: ['Ctrl+7'],
-    entries: [
-      {
-        label: 'Clear player options',
-        description:
-          'Write option labels from the player’s perspective. They should clearly describe the intent of the choice.',
-        example: 'Help the wounded stranger\nLeave them behind',
-      },
-      {
-        label: 'Link to scenes',
-        description:
-          'Each option should target a specific scene so the story graph and playthrough remain coherent.',
-      },
-      {
-        label: 'Use conditions',
-        description:
-          'Attach conditions (like hasKey == true) when an option should only be available after certain events.',
       },
     ],
   },

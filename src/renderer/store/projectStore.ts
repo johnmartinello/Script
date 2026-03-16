@@ -6,14 +6,11 @@ import type {
   GraphEdge,
   GraphNodePosition,
   Variable,
-  ChoiceOption,
 } from '@/shared/model'
 import {
   createEmptyProject,
   createScene,
   createGraphEdge,
-  createVariable,
-  createChoiceOption,
   newBeatId,
 } from '@/shared/model'
 import { withRecomputedSceneNumbers } from '@/shared/sceneNumbering'
@@ -68,7 +65,7 @@ interface ProjectActions {
   reorderBeats: (sceneId: string, fromIndex: number, toIndex: number) => void
 
   addEdge: (edge: GraphEdge) => void
-  /** Create a choice point in source scene and an edge to target (graph -> editor sync). */
+  /** Create an edge from source scene to target scene. */
   addEdgeFromConnection: (sourceSceneId: string, targetSceneId: string) => GraphEdge
   updateEdge: (edgeId: string, patch: Partial<GraphEdge>) => void
   removeEdge: (edgeId: string) => void
@@ -78,15 +75,6 @@ interface ProjectActions {
   addVariable: (variable: Variable) => void
   updateVariable: (variableId: string, patch: Partial<Variable>) => void
   removeVariable: (variableId: string) => void
-
-  addChoiceOption: (sceneId: string, beatId: string) => ChoiceOption
-  updateChoiceOption: (
-    sceneId: string,
-    beatId: string,
-    optionId: string,
-    patch: Partial<ChoiceOption>
-  ) => void
-  removeChoiceOption: (sceneId: string, beatId: string, optionId: string) => void
 
   newProject: () => void
 }
@@ -326,54 +314,8 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
       if (!scene) return state
       const nextProject = replaceScene(state, sceneId, () => ({ ...scene, beats }))
       if (!nextProject) return state
-      const optionIdsWithTarget = new Set<string>()
-      beats.forEach((b) => {
-        if (b.type === 'choice-point') {
-          b.options.forEach((o) => {
-            if (o.targetSceneId) optionIdsWithTarget.add(o.id)
-          })
-        }
-      })
-      const edgesFromScene = nextProject.edges.filter((e) => e.sourceSceneId === sceneId)
-      const toRemove = edgesFromScene.filter(
-        (e) => e.choiceOptionId != null && !optionIdsWithTarget.has(e.choiceOptionId)
-      )
-      const toAdd: GraphEdge[] = []
-      const edgeUpdates: Record<string, Partial<GraphEdge>> = {}
-      beats.forEach((b) => {
-        if (b.type !== 'choice-point') return
-        b.options.forEach((o) => {
-          if (!o.targetSceneId) return
-          const existing = nextProject.edges.find(
-            (e) => e.sourceSceneId === sceneId && e.choiceOptionId === o.id
-          )
-          if (existing) {
-            if (
-              existing.targetSceneId !== o.targetSceneId ||
-              existing.label !== o.label ||
-              existing.condition !== o.condition
-            ) {
-              edgeUpdates[existing.id] = {
-                targetSceneId: o.targetSceneId,
-                label: o.label,
-                condition: o.condition,
-              }
-            }
-          } else {
-            toAdd.push(createGraphEdge(sceneId, o.targetSceneId, {
-              choiceOptionId: o.id,
-              label: o.label,
-              condition: o.condition,
-            }))
-          }
-        })
-      })
-      const removeIds = new Set(toRemove.map((e) => e.id))
-      let nextEdges = nextProject.edges.filter((e) => !removeIds.has(e.id))
-      nextEdges = nextEdges.map((e) => (edgeUpdates[e.id] ? { ...e, ...edgeUpdates[e.id] } : e))
-      nextEdges = [...nextEdges, ...toAdd]
       return {
-        project: applySceneNumbers({ ...nextProject, edges: nextEdges }),
+        project: applySceneNumbers(nextProject),
         dirty: true,
       }
     })
@@ -408,24 +350,11 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   removeBeat: (sceneId, beatId) => {
     set((state) => {
       const scene = getScene(state, sceneId)
-      if (!scene || !state.project) return state
-      const beat = scene.beats.find((b) => b.id === beatId)
-      const optionIds =
-        beat?.type === 'choice-point' ? new Set(beat.options.map((o) => o.id)) : new Set<string>()
+      if (!scene) return state
       const beats = scene.beats.filter((b) => b.id !== beatId)
-      const edgesToRemove = state.project.edges.filter(
-        (e) => e.sourceSceneId === sceneId && e.choiceOptionId != null && optionIds.has(e.choiceOptionId)
-      )
-      let project = replaceScene(state, sceneId, () => ({ ...scene, beats }))
-      if (!project) return state
-      if (edgesToRemove.length > 0) {
-        const ids = new Set(edgesToRemove.map((e) => e.id))
-        project = {
-          ...project,
-          edges: project.edges.filter((e) => !ids.has(e.id)),
-        }
-      }
-      return { project: applySceneNumbers(project), dirty: true }
+      const nextProject = replaceScene(state, sceneId, () => ({ ...scene, beats }))
+      if (!nextProject) return state
+      return { project: applySceneNumbers(nextProject), dirty: true }
     })
   },
 
@@ -453,24 +382,11 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   addEdgeFromConnection: (sourceSceneId, targetSceneId) => {
     const scene = get().getScene(sourceSceneId)
     if (!scene) throw new Error('Source scene not found')
-    const option = createChoiceOption()
-    const choiceBeat: Beat = {
-      id: newBeatId(),
-      type: 'choice-point',
-      options: [{ ...option, targetSceneId, label: '' }],
-    }
-    const edge = createGraphEdge(sourceSceneId, targetSceneId, {
-      choiceOptionId: option.id,
-      label: '',
-    })
+    const edge = createGraphEdge(sourceSceneId, targetSceneId, { label: '' })
     set((state) => {
       if (!state.project) return state
-      const nextScenes = state.project.scenes.map((s) =>
-        s.id === sourceSceneId ? { ...s, beats: [...s.beats, choiceBeat] } : s
-      )
       const next = {
         ...state.project,
-        scenes: nextScenes,
         edges: [...state.project.edges, edge],
       }
       return { project: applySceneNumbers(next), dirty: true }
@@ -558,87 +474,6 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
         },
         dirty: true,
       }
-    })
-  },
-
-  addChoiceOption: (sceneId, beatId) => {
-    const option = createChoiceOption()
-    set((state) => {
-      const scene = getScene(state, sceneId)
-      if (!scene) return state
-      const beats = scene.beats.map((b) => {
-        if (b.id !== beatId || b.type !== 'choice-point') return b
-        return { ...b, options: [...b.options, option] }
-      }) as Beat[]
-      const nextProject = replaceScene(state, sceneId, () => ({ ...scene, beats }))
-      if (!nextProject) return state
-      return { project: applySceneNumbers(nextProject), dirty: true }
-    })
-    return option
-  },
-
-  updateChoiceOption: (sceneId, beatId, optionId, patch) => {
-    set((state) => {
-      const scene = getScene(state, sceneId)
-      if (!scene) return state
-      const beats = scene.beats.map((b) => {
-        if (b.id !== beatId || b.type !== 'choice-point') return b
-        return {
-          ...b,
-          options: b.options.map((o) => (o.id === optionId ? { ...o, ...patch } : o)),
-        }
-      }) as Beat[]
-      let project = replaceScene(state, sceneId, () => ({ ...scene, beats }))
-      if (!project) return state
-      if (patch.targetSceneId !== undefined) {
-        const existing = project.edges.find(
-          (e) => e.sourceSceneId === sceneId && e.choiceOptionId === optionId
-        )
-        if (patch.targetSceneId) {
-          if (existing) {
-            project = {
-              ...project,
-              edges: project.edges.map((e) =>
-                e.id === existing.id
-                  ? { ...e, targetSceneId: patch.targetSceneId!, label: patch.label ?? e.label }
-                  : e
-              ),
-            }
-          } else {
-            const edge = createGraphEdge(sceneId, patch.targetSceneId, {
-              choiceOptionId: optionId,
-              label: patch.label ?? '',
-              condition: patch.condition ?? '',
-            })
-            project = { ...project, edges: [...project.edges, edge] }
-          }
-        } else if (existing) {
-          project = {
-            ...project,
-            edges: project.edges.filter((e) => e.id !== existing.id),
-          }
-        }
-      }
-      return { project: applySceneNumbers(project), dirty: true }
-    })
-  },
-
-  removeChoiceOption: (sceneId, beatId, optionId) => {
-    set((state) => {
-      const scene = getScene(state, sceneId)
-      if (!scene || !state.project) return state
-      const beats = scene.beats.map((b) => {
-        if (b.id !== beatId || b.type !== 'choice-point') return b
-        return { ...b, options: b.options.filter((o) => o.id !== optionId) }
-      }) as Beat[]
-      const edgesToRemove = state.project.edges.filter((e) => e.choiceOptionId === optionId)
-      let project = replaceScene(state, sceneId, () => ({ ...scene, beats }))
-      if (!project) return state
-      if (edgesToRemove.length > 0) {
-        const ids = new Set(edgesToRemove.map((e) => e.id))
-        project = { ...project, edges: project.edges.filter((e) => !ids.has(e.id)) }
-      }
-      return { project: applySceneNumbers(project), dirty: true }
     })
   },
 

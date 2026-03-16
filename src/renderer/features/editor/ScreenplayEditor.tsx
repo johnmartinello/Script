@@ -54,12 +54,6 @@ function beatsEqual(a: Beat[], b: Beat[]): boolean {
     if (!beat) return false
     if (c.type !== beat.type || c.id !== beat.id) return false
     if ('text' in c && 'text' in beat) return c.text === beat.text
-    if (c.type === 'choice-point' && beat.type === 'choice-point') {
-      return (
-        c.options.length === beat.options.length &&
-        c.options.every((o, j) => o.id === beat.options[j]?.id && o.label === beat.options[j]?.label)
-      )
-    }
     return true
   })
 }

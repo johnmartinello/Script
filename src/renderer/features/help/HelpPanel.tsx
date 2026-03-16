@@ -101,7 +101,7 @@ export function HelpPanel() {
               <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Ctrl+6</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Cmd+6</kbd> - Transition
             </li>
             <li>
-              <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Ctrl+7</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Cmd+7</kbd> - Choice point
+              <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Ctrl+7</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Cmd+7</kbd> - Set variable
             </li>
           </ul>
           <h4 className="text-sm font-medium mt-3 mb-2">Sidebar (editing project name)</h4>
@@ -120,13 +120,6 @@ export function HelpPanel() {
           <ul className="space-y-2 text-sm">
             <li>
               Use <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Enter</kbd> to insert a new beat; use <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Ctrl+1</kbd>–<kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">7</kbd> to change the current beat type (see shortcuts above).
-            </li>
-            <li>
-              <span className="font-medium">Choice Point</span> - Add options and assign target
-              scenes from the dropdown.
-            </li>
-            <li>
-              Changes in choice targets are synced to graph edges automatically.
             </li>
           </ul>
         </section>

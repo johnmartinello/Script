@@ -25,9 +25,7 @@ This project is designed to help narrative designers:
   - Dialogue
   - Parenthetical
   - Transition
-  - Choice Point
 - Branching graph editor with draggable nodes and scene connections
-- Choice options linked to target scenes (and synced graph edges)
 - Scene numbering for main path and branches
 - Project save/open (`.gscript`) with autosave support
 - PDF export via print workflow

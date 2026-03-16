@@ -28,12 +28,6 @@ export function screenplayToHtml(project: Project): string {
         parts.push(`<div class="parenthetical">${escapeHtml(beat.text)}</div>`)
       } else if (beat.type === 'transition') {
         parts.push(`<div class="transition">${escapeHtml(beat.text)}</div>`)
-      } else if (beat.type === 'choice-point') {
-        parts.push('<div class="choice">')
-        for (const opt of beat.options) {
-          parts.push(`  <div class="choice-option">${escapeHtml(opt.label)}</div>`)
-        }
-        parts.push('</div>')
       }
     }
     parts.push('<div class="scene-break"></div>')
@@ -60,8 +54,6 @@ export function screenplayToHtml(project: Project): string {
   .parenthetical { margin: 0 1.9in 0.5em 2.1in; max-width: 2in; font-size: 0.95em; }
   /* Transition: flush right, 1.5" wide block at 6" from left → margin-left 4.5in */
   .transition { text-align: right; margin: 0.5em 0; margin-left: 4.5in; width: 1.5in; }
-  .choice { margin: 0.5em 0; border-left: 2px solid #666; padding-left: 0.5em; }
-  .choice-option { margin: 0.2em 0; }
   .scene-break { height: 0; margin: 0; }
   @media print { body { margin: 1in 1in 1in 1.5in; } }
 </style>

@@ -29,14 +29,14 @@ export function computeSceneNumbers(project: Project): Record<string, string> {
     numbers[id] = String(i + 1)
   })
 
-  // Branch scenes: for each main-path scene, outgoing edges with choiceOptionId
+  // Branch scenes: for each main-path scene, outgoing edges.
   for (let i = 0; i < mainPathIds.length; i++) {
     const sourceId = mainPathIds[i]
     const n = String(i + 1)
     const outgoing = edgesBySource.get(sourceId) ?? []
-    const branchEdges = outgoing
-      .filter((e) => e.choiceOptionId != null)
-      .sort((a, b) => (a.choiceOptionId ?? '').localeCompare(b.choiceOptionId ?? ''))
+    const branchEdges = [...outgoing].sort((a, b) =>
+      (a.label || a.id).localeCompare(b.label || b.id)
+    )
     branchEdges.forEach((e, idx) => {
       const targetId = e.targetSceneId
       if (sceneById.has(targetId) && numbers[targetId] == null) {
