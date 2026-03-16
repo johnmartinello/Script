@@ -27,10 +27,6 @@ function buildFlowEdge(id: string, source: string, target: string, label?: strin
 export function deriveSceneFlowEdges(project: Project): Edge[] {
   const sceneById = new Map(project.scenes.map((s) => [s.id, s]))
   const canonicalOrder = getCanonicalSceneOrder(project)
-  const nextByCanon = new Map<string, string>()
-  for (let i = 0; i < canonicalOrder.length - 1; i++) {
-    nextByCanon.set(canonicalOrder[i], canonicalOrder[i + 1])
-  }
 
   const edges: Edge[] = []
   const used = new Set<string>()
@@ -65,9 +61,6 @@ export function deriveSceneFlowEdges(project: Project): Edge[] {
     }
     if (following && sceneById.has(following)) {
       add(buildFlowEdge(`branch-out:${branch.id}:${following}`, branch.id, following))
-    } else if (preceding && nextByCanon.has(preceding)) {
-      // Fallback to canonical next when following is missing.
-      add(buildFlowEdge(`branch-fallback:${branch.id}:${nextByCanon.get(preceding)!}`, branch.id, nextByCanon.get(preceding)!))
     }
   }
 

@@ -1,54 +1,18 @@
-import type { BeatType, Project, Scene } from '@/shared/model'
-import { GSCRIPT_VERSION } from '@/shared/model'
+import type { Project } from '@/shared/model'
 
-const VALID_BEAT_TYPES: BeatType[] = [
-  'scene-heading',
-  'action',
-  'character-cue',
-  'dialogue',
-  'parenthetical',
-  'transition',
-]
-
-function normalizeScene(scene: Scene): Scene {
-  const sceneKind = scene.sceneKind ?? 'canon'
-  const branchMeta =
-    sceneKind === 'branch'
-      ? {
-          precedingCanonSceneId: scene.branchMeta?.precedingCanonSceneId ?? null,
-          followingCanonSceneId: scene.branchMeta?.followingCanonSceneId ?? null,
-          conditionText: scene.branchMeta?.conditionText ?? '',
-          branchOrder: scene.branchMeta?.branchOrder ?? 0,
-        }
-      : null
-  const beats = (scene.beats ?? []).map((beat) => {
-    if (!VALID_BEAT_TYPES.includes(beat.type as BeatType)) {
-      return {
-        id: beat.id,
-        type: 'action' as const,
-        text: '',
-      }
-    }
-    return beat
-  })
-  return {
-    ...scene,
-    sceneKind,
-    branchMeta,
-    beats,
-  }
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
 }
 
-function normalizeProject(raw: Project): Project {
-  const version = raw.version ?? 1
-  return {
-    ...raw,
-    scenes: (raw.scenes ?? []).map((s) => normalizeScene(s as Scene)),
-    chapters: raw.chapters ?? [],
-    nodePositions: raw.nodePositions ?? {},
-    edges: raw.edges ?? [],
-    version: Math.max(version, GSCRIPT_VERSION),
-  }
+function isValidProject(value: unknown): value is Project {
+  if (!isRecord(value)) return false
+  if (typeof value.id !== 'string') return false
+  if (typeof value.name !== 'string') return false
+  if (!Array.isArray(value.scenes)) return false
+  if (!Array.isArray(value.edges)) return false
+  if (!Array.isArray(value.chapters)) return false
+  if (!isRecord(value.nodePositions)) return false
+  return true
 }
 
 export async function openProject(): Promise<{ path: string; project: Project } | null> {
@@ -56,9 +20,17 @@ export async function openProject(): Promise<{ path: string; project: Project } 
     'project:open'
   )
   if (!result.path || !result.data) return null
-  const raw = JSON.parse(result.data) as Project
-  const project = normalizeProject(raw)
-  return { path: result.path, project }
+  try {
+    const raw = JSON.parse(result.data) as unknown
+    if (!isValidProject(raw)) {
+      window.alert('Invalid project file format. This app now accepts only the current schema.')
+      return null
+    }
+    return { path: result.path, project: raw }
+  } catch {
+    window.alert('Could not parse project file.')
+    return null
+  }
 }
 
 export async function saveProject(

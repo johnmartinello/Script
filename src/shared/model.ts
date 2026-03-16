@@ -115,11 +115,7 @@ export interface Project {
   chapters: ChapterGroup[]
   /** Scene id -> { x, y } for React Flow layout. */
   nodePositions: Record<string, GraphNodePosition>
-  /** Schema version for future migrations. */
-  version: number
 }
-
-export const GSCRIPT_VERSION = 2
 
 export function createEmptyProject(name: string = 'Untitled'): Project {
   return {
@@ -129,7 +125,6 @@ export function createEmptyProject(name: string = 'Untitled'): Project {
     edges: [],
     chapters: [],
     nodePositions: {},
-    version: GSCRIPT_VERSION,
   }
 }
 
