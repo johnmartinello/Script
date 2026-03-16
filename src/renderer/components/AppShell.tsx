@@ -43,9 +43,18 @@ export function AppShell() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
-        e.preventDefault()
-        useProjectStore.getState().toggleReferenceSidebar()
+      if (e.ctrlKey || e.metaKey) {
+        const key = e.key.toLowerCase()
+        if (key === 'r') {
+          e.preventDefault()
+          useProjectStore.getState().toggleReferenceSidebar()
+          return
+        }
+        if (key === 'h') {
+          e.preventDefault()
+          useProjectStore.getState().toggleBeatTipVisible()
+          return
+        }
       }
     }
     window.addEventListener('keydown', handleKeyDown)

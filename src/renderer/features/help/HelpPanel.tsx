@@ -85,6 +85,9 @@ export function HelpPanel() {
             <li>
               <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Ctrl+R</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Cmd+R</kbd> - Toggle Reference sidebar
             </li>
+            <li>
+              <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Ctrl+H</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-[rgb(var(--bg-muted))] border border-border text-xs font-mono">Cmd+H</kbd> - Toggle beat type tips
+            </li>
           </ul>
           <h4 className="text-sm font-medium mt-3 mb-2">Editor (cursor in a beat)</h4>
           <ul className="space-y-2 text-sm">

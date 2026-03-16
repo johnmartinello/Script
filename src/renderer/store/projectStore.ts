@@ -61,6 +61,8 @@ interface ProjectState {
   dirty: boolean
   /** Whether the reference sidebar is visible. */
   referenceSidebarOpen: boolean
+  /** Whether beat type tips are visible in the editor. */
+  beatTipVisible: boolean
   /** Beat type at the current editor selection (for context-aware help). */
   activeBeatType: Beat['type'] | null
   /** Beat id at the current editor selection (e.g. to show shortcut only on active beat). */
@@ -78,6 +80,7 @@ interface ProjectActions {
   setSelectedSceneId: (id: string | null) => void
   setViewMode: (mode: ViewMode) => void
   toggleReferenceSidebar: () => void
+  toggleBeatTipVisible: () => void
   setActiveBeatType: (type: Beat['type'] | null) => void
   setActiveBeatId: (id: string | null) => void
 
@@ -192,6 +195,7 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   projectFilePath: null,
   dirty: false,
   referenceSidebarOpen: false,
+   beatTipVisible: true,
   activeBeatType: null,
   activeBeatId: null,
   selectedBoardKey: null,
@@ -212,6 +216,8 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   setViewMode: (mode) => set({ viewMode: mode }),
   toggleReferenceSidebar: () =>
     set((state) => ({ referenceSidebarOpen: !state.referenceSidebarOpen })),
+  toggleBeatTipVisible: () =>
+    set((state) => ({ beatTipVisible: !state.beatTipVisible })),
   setActiveBeatType: (type) => set({ activeBeatType: type }),
   setActiveBeatId: (id) => set({ activeBeatId: id }),
 

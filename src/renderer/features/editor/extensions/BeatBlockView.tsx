@@ -22,11 +22,32 @@ const beatShortcutLabels: Partial<Record<BeatType, string>> = {
 }
 
 export function BeatBlockView(props: ReactNodeViewProps) {
-  const { node, updateAttributes } = props
+  const { node, updateAttributes, editor, getPos } = props
   const type = (node.attrs.beatType ?? 'scene-heading') as BeatType
   const activeBeatId = useProjectStore((s) => s.activeBeatId)
+  const beatTipVisible = useProjectStore((s) => s.beatTipVisible)
   const beatId = (node.attrs.beatId ?? '') as string
   const isActiveBeat = activeBeatId === beatId
+
+  let hasDifferentPreviousType = true
+  try {
+    const pos = typeof getPos === 'function' ? getPos() : null
+    if (pos != null) {
+      const $pos = editor.state.doc.resolve(pos)
+      const index = $pos.index()
+      if (index > 0) {
+        const prev = $pos.node(-1).child(index - 1)
+        if (prev && prev.type.name === 'beat') {
+          const prevType = (prev.attrs.beatType ?? 'scene-heading') as BeatType
+          hasDifferentPreviousType = prevType !== type
+        }
+      }
+    }
+  } catch {
+    hasDifferentPreviousType = true
+  }
+
+  const showBeatTip = isActiveBeat && beatTipVisible && hasDifferentPreviousType
 
   const contentClassName =
     type === 'scene-heading'
@@ -51,7 +72,7 @@ export function BeatBlockView(props: ReactNodeViewProps) {
   return (
     <NodeViewWrapper as="div" data-beat="" data-beat-id={beatId} className="my-3">
       <div className="flex items-baseline gap-2">
-        <BeatTypeDropdown type={type} showShortcut={isActiveBeat} onChange={(next) => {
+        <BeatTypeDropdown type={type} showTip={showBeatTip} onChange={(next) => {
           updateAttributes({ ...node.attrs, beatType: next })
         }} />
         <div className={contentWrapperClassName}>
@@ -64,13 +85,17 @@ export function BeatBlockView(props: ReactNodeViewProps) {
 
 function BeatTypeDropdown({
   type,
-  showShortcut,
+  showTip,
   onChange,
 }: {
   type: BeatType
-  showShortcut: boolean
+  showTip: boolean
   onChange: (next: BeatType) => void
 }) {
+  if (!showTip) {
+    return <div className="shrink-0 w-24" contentEditable={false} aria-hidden="true" />
+  }
+
   return (
     <button
       type="button"
@@ -94,7 +119,7 @@ function BeatTypeDropdown({
       }}
     >
       <span>{beatLabels[type]}</span>
-      {showShortcut && beatShortcutLabels[type] && (
+      {beatShortcutLabels[type] && (
         <span className="text-[10px] text-[rgb(var(--text-muted))]">
           {beatShortcutLabels[type]}
         </span>
