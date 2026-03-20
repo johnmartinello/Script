@@ -614,10 +614,52 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
       if (!state.project) return state
       const canonScenes = state.project.scenes.filter((s) => s.sceneKind === 'canon')
       const branchScenes = state.project.scenes.filter((s) => s.sceneKind === 'branch')
-      if (canonScenes.length === 0) return state
-
       const headings = allBeats
         .filter((b): b is Beat & { type: 'scene-heading'; text: string } => b.type === 'scene-heading')
+
+      if (canonScenes.length === 0) {
+        if (headings.length === 0) return state
+        const headingIndices = allBeats
+          .map((b, i) => (b.type === 'scene-heading' ? i : -1))
+          .filter((i) => i >= 0)
+        const nextCanonScenes: Scene[] = headingIndices.map((startIdx, k) => {
+          const endIdx = headingIndices[k + 1] ?? allBeats.length
+          const headingBeat = allBeats[startIdx] as Beat & { type: 'scene-heading'; text: string }
+          const beats = k === 0 ? allBeats.slice(0, endIdx) : allBeats.slice(startIdx, endIdx)
+          return {
+            ...createScene(headingBeat.text?.trim() || 'Untitled Scene'),
+            sceneKind: 'canon',
+            branchMeta: null,
+            beats,
+            sourceBeatId: headingBeat.id,
+          }
+        })
+        const nextScenes = [...nextCanonScenes, ...branchScenes]
+        const nextNodePositions = { ...state.project.nodePositions }
+        nextScenes.forEach((scene, i) => {
+          if (!nextNodePositions[scene.id]) {
+            nextNodePositions[scene.id] = { x: 100 + i * 180, y: 100 }
+          }
+        })
+        const nextBoardsByKey: Partial<Record<BoardKey, BoardDocument>> = {
+          ...(state.project.boardsByKey ?? {}),
+        }
+        for (const scene of nextScenes) {
+          const key = boardKeyForScene(scene.id)
+          nextBoardsByKey[key] = nextBoardsByKey[key] ?? createEmptyBoardDocument()
+        }
+        return {
+          project: applySceneNumbers({
+            ...state.project,
+            scenes: nextScenes,
+            nodePositions: nextNodePositions,
+            boardsByKey: nextBoardsByKey,
+          }),
+          selectedSceneId: nextCanonScenes[0]?.id ?? state.selectedSceneId,
+          dirty: true,
+        }
+      }
+
       if (headings.length === 0) {
         const first = canonScenes[0]
         if (!first) return state
