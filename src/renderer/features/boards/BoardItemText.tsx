@@ -9,6 +9,8 @@ import {
 import type { BoardTextItem } from '@/shared/model'
 import { getImageFileFromClipboard } from './imageUtils'
 
+type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw'
+
 interface BoardItemTextProps {
   item: BoardTextItem
   selected?: boolean
@@ -16,7 +18,7 @@ interface BoardItemTextProps {
   onPointerDown: (event: PointerEvent<HTMLDivElement>) => void
   onStartEdit: () => void
   onFinishEdit: () => void
-  onResizeStart: (event: PointerEvent<HTMLButtonElement>) => void
+  onResizeStart: (direction: ResizeDirection, event: PointerEvent<HTMLDivElement>) => void
   onTextChange: (text: string, format: 'plain' | 'html') => void
   onFormatChange: (patch: Partial<Pick<BoardTextItem, 'boldAll' | 'textAlign' | 'textFormat'>>) => void
   onPasteImage: (file: File) => Promise<void>
@@ -67,6 +69,20 @@ export function BoardItemText({
   const hasText = useMemo(
     () => (item.textFormat === 'html' ? extractTextContent(item.text) : item.text.trim()).length > 0,
     [item.text, item.textFormat]
+  )
+  const resizeHandles = useMemo(
+    () =>
+      [
+        { direction: 'n', className: 'left-2 right-2 -top-1 h-2 cursor-ns-resize' },
+        { direction: 's', className: 'left-2 right-2 -bottom-1 h-2 cursor-ns-resize' },
+        { direction: 'e', className: '-right-1 top-2 bottom-2 w-2 cursor-ew-resize' },
+        { direction: 'w', className: '-left-1 top-2 bottom-2 w-2 cursor-ew-resize' },
+        { direction: 'ne', className: '-right-1 -top-1 h-3 w-3 cursor-nesw-resize' },
+        { direction: 'nw', className: '-left-1 -top-1 h-3 w-3 cursor-nwse-resize' },
+        { direction: 'se', className: '-right-1 -bottom-1 h-3 w-3 cursor-nwse-resize' },
+        { direction: 'sw', className: '-left-1 -bottom-1 h-3 w-3 cursor-nesw-resize' },
+      ] as const,
+    []
   )
 
   const persistEditorHtml = () => {
@@ -136,6 +152,19 @@ export function BoardItemText({
         onStartEdit()
       }}
     >
+      {selected
+        ? resizeHandles.map((handle) => (
+            <div
+              key={handle.direction}
+              className={`absolute z-20 ${handle.className}`}
+              onPointerDown={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                onResizeStart(handle.direction, event)
+              }}
+            />
+          ))
+        : null}
       {selected ? (
         <div
           className="absolute left-full ml-2 top-2 z-30 flex items-center gap-1 rounded-md border border-[rgb(var(--border))] bg-[rgb(var(--bg))]/95 px-1 py-0.5 shadow-md"
@@ -215,7 +244,7 @@ export function BoardItemText({
       <button
         type="button"
         title="Delete"
-        className="absolute right-1.5 top-1.5 w-5 h-5 rounded-full text-xs leading-none text-[rgb(var(--text-muted))] hover:bg-[rgb(var(--bg-muted))]"
+        className="absolute right-1.5 top-1.5 z-30 w-5 h-5 rounded-full text-xs leading-none text-[rgb(var(--text-muted))] hover:bg-[rgb(var(--bg-muted))]"
         onClick={(event) => {
           event.stopPropagation()
           onDelete()
@@ -223,12 +252,6 @@ export function BoardItemText({
       >
         ×
       </button>
-      <button
-        type="button"
-        title="Resize"
-        className="absolute right-1.5 bottom-1.5 w-3 h-3 rounded-sm bg-[rgb(var(--text-muted))]/35 cursor-se-resize"
-        onPointerDown={onResizeStart}
-      />
     </div>
   )
 }

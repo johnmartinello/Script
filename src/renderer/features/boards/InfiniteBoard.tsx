@@ -43,28 +43,41 @@ interface PanState {
 }
 
 interface DragState {
-  itemId: string
+  itemIds: string[]
   startClientX: number
   startClientY: number
-  startX: number
-  startY: number
+  startPositions: Record<string, { x: number; y: number }>
 }
 
 interface PressState {
+  itemIds: string[]
+  startClientX: number
+  startClientY: number
+  startPositions: Record<string, { x: number; y: number }>
+}
+
+type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw'
+
+interface ResizeState {
   itemId: string
+  direction: ResizeDirection
   startClientX: number
   startClientY: number
   startX: number
   startY: number
-}
-
-interface ResizeState {
-  itemId: string
-  startClientX: number
-  startClientY: number
   startW: number
   startH: number
+  minW: number
+  minH: number
   lockAspect: boolean
+}
+
+interface MarqueeState {
+  startScreenX: number
+  startScreenY: number
+  currentScreenX: number
+  currentScreenY: number
+  append: boolean
 }
 
 export function InfiniteBoard({
@@ -82,21 +95,32 @@ export function InfiniteBoard({
   const [pressState, setPressState] = useState<PressState | null>(null)
   const [dragState, setDragState] = useState<DragState | null>(null)
   const [resizeState, setResizeState] = useState<ResizeState | null>(null)
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
+  const [marqueeState, setMarqueeState] = useState<MarqueeState | null>(null)
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([])
   const [editingTextItemId, setEditingTextItemId] = useState<string | null>(null)
   const pointerWorldRef = useRef({ x: board.viewport.cx, y: board.viewport.cy })
   const knownItemIdsRef = useRef<Set<string>>(new Set(Object.keys(board.items)))
+  const selectedItemIdSet = useMemo(() => new Set(selectedItemIds), [selectedItemIds])
 
   useEffect(() => {
-    if (!selectedItemId) return
-    if (board.items[selectedItemId]) return
-    setSelectedItemId(null)
-    setEditingTextItemId((current) => (current === selectedItemId ? null : current))
-  }, [board.items, selectedItemId])
+    setSelectedItemIds((current) => {
+      const next = current.filter((itemId) => !!board.items[itemId])
+      if (next.length === current.length && next.every((itemId, index) => itemId === current[index])) {
+        return current
+      }
+      return next
+    })
+  }, [board.items])
+
+  useEffect(() => {
+    if (!editingTextItemId) return
+    if (board.items[editingTextItemId]) return
+    setEditingTextItemId(null)
+  }, [board.items, editingTextItemId])
 
   useEffect(() => {
     knownItemIdsRef.current = new Set(Object.keys(board.items))
-    setSelectedItemId(null)
+    setSelectedItemIds([])
     setEditingTextItemId(null)
   }, [boardKey])
 
@@ -117,7 +141,7 @@ export function InfiniteBoard({
     knownItemIdsRef.current = new Set(Object.keys(board.items))
 
     if (newestEmptyTextItem) {
-      setSelectedItemId(newestEmptyTextItem.id)
+      setSelectedItemIds([newestEmptyTextItem.id])
       setEditingTextItemId(newestEmptyTextItem.id)
     }
   }, [board.items])
@@ -136,8 +160,126 @@ export function InfiniteBoard({
   }, [])
 
   useEffect(() => {
+    const applyFreeResize = (
+      state: ResizeState,
+      dxWorld: number,
+      dyWorld: number
+    ): { x: number; y: number; w: number; h: number } => {
+      let x = state.startX
+      let y = state.startY
+      let w = state.startW
+      let h = state.startH
+
+      if (state.direction.includes('e')) {
+        w = Math.max(state.minW, state.startW + dxWorld)
+      }
+      if (state.direction.includes('s')) {
+        h = Math.max(state.minH, state.startH + dyWorld)
+      }
+      if (state.direction.includes('w')) {
+        const nextW = Math.max(state.minW, state.startW - dxWorld)
+        x = state.startX + (state.startW - nextW)
+        w = nextW
+      }
+      if (state.direction.includes('n')) {
+        const nextH = Math.max(state.minH, state.startH - dyWorld)
+        y = state.startY + (state.startH - nextH)
+        h = nextH
+      }
+
+      return { x, y, w, h }
+    }
+
+    const applyAspectResize = (
+      state: ResizeState,
+      dxWorld: number,
+      dyWorld: number
+    ): { x: number; y: number; w: number; h: number } => {
+      const aspect = state.startW / state.startH
+      const minScale = Math.max(state.minW / state.startW, state.minH / state.startH)
+      const horizontal = state.direction === 'e' || state.direction === 'w'
+      const vertical = state.direction === 'n' || state.direction === 's'
+
+      let scale = 1
+      if (horizontal) {
+        const proposedW = state.direction === 'w' ? state.startW - dxWorld : state.startW + dxWorld
+        scale = proposedW / state.startW
+      } else if (vertical) {
+        const proposedH = state.direction === 'n' ? state.startH - dyWorld : state.startH + dyWorld
+        scale = proposedH / state.startH
+      } else {
+        const proposedW = state.direction.includes('w') ? state.startW - dxWorld : state.startW + dxWorld
+        const proposedH = state.direction.includes('n') ? state.startH - dyWorld : state.startH + dyWorld
+        scale = Math.max(proposedW / state.startW, proposedH / state.startH)
+      }
+
+      scale = Math.max(minScale, scale)
+      const w = Math.max(state.minW, state.startW * scale)
+      const h = Math.max(state.minH, w / aspect)
+
+      let x = state.startX
+      let y = state.startY
+
+      if (horizontal) {
+        if (state.direction === 'w') {
+          x = state.startX + (state.startW - w)
+        }
+        y = state.startY + (state.startH - h) / 2
+      } else if (vertical) {
+        if (state.direction === 'n') {
+          y = state.startY + (state.startH - h)
+        }
+        x = state.startX + (state.startW - w) / 2
+      } else {
+        if (state.direction.includes('w')) {
+          x = state.startX + (state.startW - w)
+        }
+        if (state.direction.includes('n')) {
+          y = state.startY + (state.startH - h)
+        }
+      }
+
+      return { x, y, w, h }
+    }
+
+    const getIntersectingIds = (state: MarqueeState): string[] => {
+      const startWorld = screenToWorld(
+        { x: state.startScreenX, y: state.startScreenY },
+        board.viewport,
+        size
+      )
+      const endWorld = screenToWorld(
+        { x: state.currentScreenX, y: state.currentScreenY },
+        board.viewport,
+        size
+      )
+      const left = Math.min(startWorld.x, endWorld.x)
+      const right = Math.max(startWorld.x, endWorld.x)
+      const top = Math.min(startWorld.y, endWorld.y)
+      const bottom = Math.max(startWorld.y, endWorld.y)
+
+      return Object.values(board.items)
+        .filter((item) => {
+          const itemLeft = item.x
+          const itemRight = item.x + item.w
+          const itemTop = item.y
+          const itemBottom = item.y + item.h
+          return !(itemRight < left || itemLeft > right || itemBottom < top || itemTop > bottom)
+        })
+        .map((item) => item.id)
+    }
+
     const onMove = (event: globalThis.MouseEvent) => {
-      if (panState) {
+      if (resizeState) {
+        const dx = event.clientX - resizeState.startClientX
+        const dy = event.clientY - resizeState.startClientY
+        const dxWorld = dx / board.viewport.zoom
+        const dyWorld = dy / board.viewport.zoom
+        const next = resizeState.lockAspect
+          ? applyAspectResize(resizeState, dxWorld, dyWorld)
+          : applyFreeResize(resizeState, dxWorld, dyWorld)
+        onUpdateItem(resizeState.itemId, next)
+      } else if (panState) {
         const dx = event.clientX - panState.startClientX
         const dy = event.clientY - panState.startClientY
         onViewportChange({
@@ -150,46 +292,66 @@ export function InfiniteBoard({
         const dy = event.clientY - pressState.startClientY
         if (Math.hypot(dx, dy) > 3) {
           setDragState({
-            itemId: pressState.itemId,
+            itemIds: pressState.itemIds,
             startClientX: pressState.startClientX,
             startClientY: pressState.startClientY,
-            startX: pressState.startX,
-            startY: pressState.startY,
+            startPositions: pressState.startPositions,
           })
         }
       } else if (dragState) {
         const dx = event.clientX - dragState.startClientX
         const dy = event.clientY - dragState.startClientY
-        onUpdateItem(dragState.itemId, {
-          x: dragState.startX + dx / board.viewport.zoom,
-          y: dragState.startY + dy / board.viewport.zoom,
-          z: Date.now(),
+        const worldDx = dx / board.viewport.zoom
+        const worldDy = dy / board.viewport.zoom
+        dragState.itemIds.forEach((itemId, index) => {
+          const start = dragState.startPositions[itemId]
+          if (!start) return
+          onUpdateItem(itemId, {
+            x: start.x + worldDx,
+            y: start.y + worldDy,
+            z: Date.now() + index,
+          })
         })
-      } else if (resizeState) {
-        const dx = event.clientX - resizeState.startClientX
-        const dy = event.clientY - resizeState.startClientY
-        if (resizeState.lockAspect) {
-          const widthScale = (resizeState.startW + dx / board.viewport.zoom) / resizeState.startW
-          const heightScale = (resizeState.startH + dy / board.viewport.zoom) / resizeState.startH
-          const scale = Math.max(0.2, Math.max(widthScale, heightScale))
-          onUpdateItem(resizeState.itemId, {
-            w: Math.max(80, resizeState.startW * scale),
-            h: Math.max(80, resizeState.startH * scale),
-          })
-        } else {
-          onUpdateItem(resizeState.itemId, {
-            w: Math.max(120, resizeState.startW + dx / board.viewport.zoom),
-            h: Math.max(80, resizeState.startH + dy / board.viewport.zoom),
-          })
-        }
+      } else if (marqueeState) {
+        const rect = containerRef.current?.getBoundingClientRect()
+        if (!rect) return
+        setMarqueeState((current) =>
+          current
+            ? {
+                ...current,
+                currentScreenX: event.clientX - rect.left,
+                currentScreenY: event.clientY - rect.top,
+              }
+            : current
+        )
       }
     }
 
     const onUp = () => {
+      if (marqueeState) {
+        const intersectingIds = getIntersectingIds(marqueeState)
+        if (marqueeState.append) {
+          setSelectedItemIds((current) => {
+            const next = new Set(current)
+            intersectingIds.forEach((itemId) => {
+              if (next.has(itemId)) {
+                next.delete(itemId)
+              } else {
+                next.add(itemId)
+              }
+            })
+            return Array.from(next)
+          })
+        } else {
+          setSelectedItemIds(intersectingIds)
+        }
+      }
+
       setPanState(null)
       setPressState(null)
       setDragState(null)
       setResizeState(null)
+      setMarqueeState(null)
     }
 
     window.addEventListener('mousemove', onMove)
@@ -198,25 +360,36 @@ export function InfiniteBoard({
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
-  }, [board.viewport.zoom, dragState, onUpdateItem, onViewportChange, panState, pressState, resizeState])
+  }, [
+    board.items,
+    board.viewport,
+    dragState,
+    marqueeState,
+    onUpdateItem,
+    onViewportChange,
+    panState,
+    pressState,
+    resizeState,
+    size,
+  ])
 
   useEffect(() => {
     const onGlobalKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key !== 'Delete') return
-      if (!selectedItemId) return
+      if (!selectedItemIds.length) return
       const target = event.target as HTMLElement | null
       const tag = target?.tagName?.toLowerCase()
       const typingInField =
         tag === 'textarea' || tag === 'input' || !!target?.isContentEditable
       if (typingInField) return
       event.preventDefault()
-      onRemoveItem(selectedItemId)
-      setSelectedItemId(null)
+      selectedItemIds.forEach((itemId) => onRemoveItem(itemId))
+      setSelectedItemIds([])
       setEditingTextItemId(null)
     }
     window.addEventListener('keydown', onGlobalKeyDown)
     return () => window.removeEventListener('keydown', onGlobalKeyDown)
-  }, [onRemoveItem, selectedItemId])
+  }, [onRemoveItem, selectedItemIds])
 
   const sortedItems = useMemo(
     () =>
@@ -238,15 +411,32 @@ export function InfiniteBoard({
   }
 
   const handleCanvasPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return
     ;(event.currentTarget as HTMLDivElement).focus()
-    setSelectedItemId(null)
     setEditingTextItemId(null)
-    setPanState({
-      startClientX: event.clientX,
-      startClientY: event.clientY,
-      startViewport: board.viewport,
+    if (event.button === 1) {
+      event.preventDefault()
+      setPanState({
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        startViewport: board.viewport,
+      })
+      return
+    }
+    if (event.button !== 0) return
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const screenX = event.clientX - rect.left
+    const screenY = event.clientY - rect.top
+    setMarqueeState({
+      startScreenX: screenX,
+      startScreenY: screenY,
+      currentScreenX: screenX,
+      currentScreenY: screenY,
+      append: event.shiftKey,
     })
+    if (!event.shiftKey) {
+      setSelectedItemIds([])
+    }
   }
 
   const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
@@ -305,29 +495,60 @@ export function InfiniteBoard({
     event.stopPropagation()
     if (event.button !== 0) return
     containerRef.current?.focus()
-    setSelectedItemId(item.id)
+    if (event.shiftKey) {
+      setSelectedItemIds((current) => {
+        if (current.includes(item.id)) return current.filter((id) => id !== item.id)
+        return [...current, item.id]
+      })
+      setEditingTextItemId(null)
+      return
+    }
+
+    const dragIds = selectedItemIdSet.has(item.id) ? selectedItemIds : [item.id]
+    if (!selectedItemIdSet.has(item.id)) {
+      setSelectedItemIds([item.id])
+    }
+
     if (item.type !== 'text' || editingTextItemId !== item.id) {
       setEditingTextItemId(null)
     }
+
+    const startPositions = dragIds.reduce<Record<string, { x: number; y: number }>>((acc, itemId) => {
+      const currentItem = board.items[itemId]
+      if (!currentItem) return acc
+      acc[itemId] = { x: currentItem.x, y: currentItem.y }
+      return acc
+    }, {})
+
     setPressState({
-      itemId: item.id,
+      itemIds: dragIds,
       startClientX: event.clientX,
       startClientY: event.clientY,
-      startX: item.x,
-      startY: item.y,
+      startPositions,
     })
-    onUpdateItem(item.id, { z: Date.now() })
+    dragIds.forEach((itemId, index) => {
+      onUpdateItem(itemId, { z: Date.now() + index })
+    })
   }
 
-  const onItemResizeStart = (item: BoardItem, event: PointerEvent<HTMLButtonElement>) => {
+  const onItemResizeStart = (
+    item: BoardItem,
+    direction: ResizeDirection,
+    event: PointerEvent<HTMLDivElement>
+  ) => {
     event.stopPropagation()
     if (event.button !== 0) return
     setResizeState({
       itemId: item.id,
+      direction,
       startClientX: event.clientX,
       startClientY: event.clientY,
+      startX: item.x,
+      startY: item.y,
       startW: item.w,
       startH: item.h,
+      minW: item.type === 'text' ? 120 : 80,
+      minH: 80,
       lockAspect: item.type === 'image',
     })
     onUpdateItem(item.id, { z: Date.now() })
@@ -345,6 +566,18 @@ export function InfiniteBoard({
       onPaste={handlePaste}
       className="relative h-full w-full overflow-hidden outline-none bg-[rgb(var(--bg))]"
     >
+      {marqueeState ? (
+        <div
+          className="pointer-events-none absolute border border-[rgb(var(--accent))] bg-[rgb(var(--accent))]/10"
+          style={{
+            left: `${Math.min(marqueeState.startScreenX, marqueeState.currentScreenX)}px`,
+            top: `${Math.min(marqueeState.startScreenY, marqueeState.currentScreenY)}px`,
+            width: `${Math.abs(marqueeState.currentScreenX - marqueeState.startScreenX)}px`,
+            height: `${Math.abs(marqueeState.currentScreenY - marqueeState.startScreenY)}px`,
+            zIndex: 9999,
+          }}
+        />
+      ) : null}
       {sortedItems.map((item) => {
         const topLeft = worldToScreen({ x: item.x, y: item.y }, board.viewport, size)
         const width = item.w * board.viewport.zoom
@@ -363,17 +596,17 @@ export function InfiniteBoard({
             <div key={item.id} className="absolute" style={commonStyle}>
               <BoardItemText
                 item={textItem}
-                selected={selectedItemId === item.id}
+                selected={selectedItemIdSet.has(item.id)}
                 onPointerDown={(event) => onItemPointerDown(item, event)}
                 isEditing={editingTextItemId === item.id}
                 onStartEdit={() => {
-                  setSelectedItemId(item.id)
+                  setSelectedItemIds([item.id])
                   setEditingTextItemId(item.id)
                 }}
                 onFinishEdit={() => {
                   setEditingTextItemId((current) => (current === item.id ? null : current))
                 }}
-                onResizeStart={(event) => onItemResizeStart(item, event)}
+                onResizeStart={(direction, event) => onItemResizeStart(item, direction, event)}
                 onTextChange={(text, format) => onUpdateItem(item.id, { text, textFormat: format })}
                 onFormatChange={(patch) => onUpdateItem(item.id, patch)}
                 onPasteImage={async (file) => {
@@ -400,9 +633,9 @@ export function InfiniteBoard({
           <div key={item.id} className="absolute" style={commonStyle}>
             <BoardItemImage
               item={imageItem}
-              selected={selectedItemId === item.id}
+              selected={selectedItemIdSet.has(item.id)}
               onPointerDown={(event) => onItemPointerDown(item, event)}
-              onResizeStart={(event) => onItemResizeStart(item, event)}
+              onResizeStart={(direction, event) => onItemResizeStart(item, direction, event)}
               onDelete={() => onRemoveItem(item.id)}
             />
           </div>
