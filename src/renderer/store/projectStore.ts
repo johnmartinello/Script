@@ -920,9 +920,28 @@ export const useProjectStore = create<ProjectState & ProjectActions>((set, get) 
   },
 
   newProject: () => {
+    const project = createEmptyProject()
+    const headingBeatId = newBeatId()
+    const headingText = 'Untitled Scene'
+    const initialScene: Scene = {
+      ...createScene(headingText),
+      beats: [{ id: headingBeatId, type: 'scene-heading', text: headingText }],
+      sourceBeatId: headingBeatId,
+    }
+    const initialProject: Project = {
+      ...project,
+      scenes: [initialScene],
+      nodePositions: {
+        [initialScene.id]: { x: 100, y: 100 },
+      },
+      boardsByKey: {
+        ...(project.boardsByKey ?? {}),
+        [boardKeyForScene(initialScene.id)]: createEmptyBoardDocument(),
+      },
+    }
     set({
-      project: createEmptyProject(),
-      selectedSceneId: null,
+      project: applySceneNumbers(initialProject),
+      selectedSceneId: initialScene.id,
       selectedBoardKey: null,
       projectFilePath: null,
       dirty: false,
