@@ -160,6 +160,13 @@ export function InfiniteBoard({
   }, [])
 
   useEffect(() => {
+    const getResizeCursor = (direction: ResizeDirection): string => {
+      if (direction === 'n' || direction === 's') return 'ns-resize'
+      if (direction === 'e' || direction === 'w') return 'ew-resize'
+      if (direction === 'nw' || direction === 'se') return 'nwse-resize'
+      return 'nesw-resize'
+    }
+
     const applyFreeResize = (
       state: ResizeState,
       dxWorld: number,
@@ -269,8 +276,10 @@ export function InfiniteBoard({
         .map((item) => item.id)
     }
 
-    const onMove = (event: globalThis.MouseEvent) => {
+    const onMove = (event: globalThis.PointerEvent) => {
       if (resizeState) {
+        document.body.style.cursor = getResizeCursor(resizeState.direction)
+        document.body.style.userSelect = 'none'
         const dx = event.clientX - resizeState.startClientX
         const dy = event.clientY - resizeState.startClientY
         const dxWorld = dx / board.viewport.zoom
@@ -328,6 +337,9 @@ export function InfiniteBoard({
     }
 
     const onUp = () => {
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+
       if (marqueeState) {
         const intersectingIds = getIntersectingIds(marqueeState)
         if (marqueeState.append) {
@@ -354,11 +366,15 @@ export function InfiniteBoard({
       setMarqueeState(null)
     }
 
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
     return () => {
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
     }
   }, [
     board.items,
@@ -538,6 +554,10 @@ export function InfiniteBoard({
   ) => {
     event.stopPropagation()
     if (event.button !== 0) return
+    if (!selectedItemIdSet.has(item.id)) {
+      setSelectedItemIds([item.id])
+    }
+    setEditingTextItemId(null)
     setResizeState({
       itemId: item.id,
       direction,

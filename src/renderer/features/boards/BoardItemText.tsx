@@ -2,6 +2,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   type ClipboardEvent,
   type KeyboardEvent,
   type PointerEvent,
@@ -60,6 +61,7 @@ export function BoardItemText({
 }: BoardItemTextProps) {
   const editorRef = useRef<HTMLDivElement | null>(null)
   const wasEditingRef = useRef(false)
+  const [hoveringBorder, setHoveringBorder] = useState(false)
   const normalizedAlign = item.textAlign ?? 'left'
   const boldAll = item.boldAll ?? false
   const editableHtml = useMemo(
@@ -73,14 +75,14 @@ export function BoardItemText({
   const resizeHandles = useMemo(
     () =>
       [
-        { direction: 'n', className: 'left-2 right-2 -top-1 h-2 cursor-ns-resize' },
-        { direction: 's', className: 'left-2 right-2 -bottom-1 h-2 cursor-ns-resize' },
-        { direction: 'e', className: '-right-1 top-2 bottom-2 w-2 cursor-ew-resize' },
-        { direction: 'w', className: '-left-1 top-2 bottom-2 w-2 cursor-ew-resize' },
-        { direction: 'ne', className: '-right-1 -top-1 h-3 w-3 cursor-nesw-resize' },
-        { direction: 'nw', className: '-left-1 -top-1 h-3 w-3 cursor-nwse-resize' },
-        { direction: 'se', className: '-right-1 -bottom-1 h-3 w-3 cursor-nwse-resize' },
-        { direction: 'sw', className: '-left-1 -bottom-1 h-3 w-3 cursor-nesw-resize' },
+        { direction: 'n', className: 'inset-x-0 -top-[3px] h-[6px] cursor-ns-resize z-20' },
+        { direction: 's', className: 'inset-x-0 -bottom-[3px] h-[6px] cursor-ns-resize z-20' },
+        { direction: 'e', className: 'inset-y-0 -right-[3px] w-[6px] cursor-ew-resize z-20' },
+        { direction: 'w', className: 'inset-y-0 -left-[3px] w-[6px] cursor-ew-resize z-20' },
+        { direction: 'nw', className: '-left-[3px] -top-[3px] h-[14px] w-[14px] cursor-nwse-resize z-30' },
+        { direction: 'ne', className: '-right-[3px] -top-[3px] h-[14px] w-[14px] cursor-nesw-resize z-30' },
+        { direction: 'se', className: '-right-[3px] -bottom-[3px] h-[14px] w-[14px] cursor-nwse-resize z-30' },
+        { direction: 'sw', className: '-left-[3px] -bottom-[3px] h-[14px] w-[14px] cursor-nesw-resize z-30' },
       ] as const,
     []
   )
@@ -141,30 +143,32 @@ export function BoardItemText({
     persistEditorHtml()
   }
 
+  const borderClass = selected || hoveringBorder ? 'border-[rgb(var(--border))]' : 'border-transparent'
+
   return (
     <div
-      className={`relative w-full h-full rounded-md bg-[rgb(var(--bg-muted))] shadow-sm ${
-        selected ? 'ring-2 ring-[rgb(var(--accent))]' : ''
-      }`}
+      className={`relative w-full h-full rounded-md border bg-[rgb(var(--bg-muted))] shadow-sm ${borderClass}`}
       onPointerDown={onPointerDown}
+      onPointerEnter={() => setHoveringBorder(true)}
+      onPointerLeave={() => setHoveringBorder(false)}
       onDoubleClick={(event) => {
         event.stopPropagation()
         onStartEdit()
       }}
     >
-      {selected
-        ? resizeHandles.map((handle) => (
-            <div
-              key={handle.direction}
-              className={`absolute z-20 ${handle.className}`}
-              onPointerDown={(event) => {
-                event.preventDefault()
-                event.stopPropagation()
-                onResizeStart(handle.direction, event)
-              }}
-            />
-          ))
-        : null}
+      {resizeHandles.map((handle) => (
+        <div
+          key={handle.direction}
+          className={`absolute ${handle.className}`}
+          onPointerDown={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            // Ensure pointer events (and therefore resize stop) keep routing to this handle.
+            event.currentTarget.setPointerCapture(event.pointerId)
+            onResizeStart(handle.direction, event)
+          }}
+        />
+      ))}
       {selected ? (
         <div
           className="absolute left-full ml-2 top-2 z-30 flex items-center gap-1 rounded-md border border-[rgb(var(--border))] bg-[rgb(var(--bg))]/95 px-1 py-0.5 shadow-md"
