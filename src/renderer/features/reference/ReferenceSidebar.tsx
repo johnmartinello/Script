@@ -101,7 +101,7 @@ export function ReferenceSidebar() {
                 onClick={() => setPinnedSectionId(section.id)}
                 className={`text-xs rounded-full px-2 py-1 border ${
                   selected
-                    ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent))] text-white'
+                    ? 'border-border bg-[rgb(var(--bg-muted))] text-[rgb(var(--text))]'
                     : 'border-border bg-[rgb(var(--bg))] text-[rgb(var(--text))] hover:bg-[rgb(var(--border))]'
                 }`}
               >

@@ -40,7 +40,7 @@ export function BoardsSidebar({
               onClick={onSelectProject}
               className={`w-full text-left px-2 py-1.5 rounded border text-sm ${
                 selectedBoardKey === projectBoardKey
-                  ? 'bg-[rgb(var(--accent))] text-white border-transparent'
+                  ? 'bg-[rgb(var(--bg-muted))] text-[rgb(var(--text))] border-border'
                   : 'bg-[rgb(var(--bg))] border-border hover:bg-[rgb(var(--border))]'
               }`}
             >
@@ -64,7 +64,7 @@ export function BoardsSidebar({
                   onClick={() => onSelectScene(scene.id)}
                   className={`w-full text-left px-2 py-1.5 rounded border text-sm ${
                     active
-                      ? 'bg-[rgb(var(--accent))] text-white border-transparent'
+                      ? 'bg-[rgb(var(--bg-muted))] text-[rgb(var(--text))] border-border'
                       : 'bg-[rgb(var(--bg))] border-border hover:bg-[rgb(var(--border))]'
                   }`}
                 >
@@ -91,7 +91,7 @@ export function BoardsSidebar({
                   onClick={() => onSelectCharacter(character.name)}
                   className={`w-full text-left px-2 py-1.5 rounded border text-sm ${
                     active
-                      ? 'bg-[rgb(var(--accent))] text-white border-transparent'
+                      ? 'bg-[rgb(var(--bg-muted))] text-[rgb(var(--text))] border-border'
                       : 'bg-[rgb(var(--bg))] border-border hover:bg-[rgb(var(--border))]'
                   }`}
                 >

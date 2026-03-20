@@ -25,7 +25,7 @@ export function StartScreen() {
         <button
           type="button"
           onClick={handleNewProject}
-          className="px-6 py-3 rounded border border-border bg-[rgb(var(--accent))] text-white font-medium hover:opacity-90"
+          className="px-6 py-3 rounded border border-border bg-[rgb(var(--bg-muted))] text-[rgb(var(--text))] font-medium hover:bg-[rgb(var(--border))]"
         >
           New project
         </button>

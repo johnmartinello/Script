@@ -127,7 +127,7 @@ export function SceneList() {
                 inputRef.current?.blur()
               }
             }}
-            className="w-full text-sm font-medium px-1.5 py-0.5 rounded border border-border bg-[rgb(var(--bg))] text-[rgb(var(--text))] focus:outline-none focus:ring-1 focus:ring-[rgb(var(--accent))]"
+            className="w-full text-sm font-medium px-1.5 py-0.5 rounded border border-border bg-[rgb(var(--bg))] text-[rgb(var(--text))] focus:outline-none focus:ring-1 focus:ring-[rgb(var(--ring))]"
             title="Edit project name"
           />
         ) : (
@@ -246,7 +246,7 @@ export function SceneList() {
                 onClick={() => setSelectedSceneId(s.id)}
                 className={`w-full text-left px-2 py-1.5 rounded text-sm truncate ${
                   selectedSceneId === s.id
-                    ? 'bg-[rgb(var(--accent))] text-white'
+                    ? 'bg-[rgb(var(--bg))] text-[rgb(var(--text))] border border-border'
                     : 'hover:bg-[rgb(var(--border))]'
                 }`}
                 title={s.title || 'Untitled'}
@@ -279,7 +279,7 @@ export function SceneList() {
                     onClick={() => setSelectedSceneId(s.id)}
                     className={`w-full text-left px-2 py-1.5 rounded text-sm ${
                       selectedSceneId === s.id
-                        ? 'bg-[rgb(var(--accent))] text-white'
+                        ? 'bg-[rgb(var(--bg))] text-[rgb(var(--text))] border border-border'
                         : 'hover:bg-[rgb(var(--border))]'
                     }`}
                     title={s.title || 'Untitled'}

@@ -20,11 +20,11 @@ export function SceneNode({ data, selected }: NodeProps<Node<SceneNodeData, 'sce
     <div
       className={`px-3 py-2 rounded-lg border-2 min-w-[120px] max-w-[200px] ${branchClass} ${
         selected
-          ? 'border-[rgb(var(--accent))] shadow-md'
+          ? 'border-[rgb(var(--text-muted))] shadow-md'
           : 'border-[rgb(var(--border))] hover:border-[rgb(var(--text-muted))]'
       }`}
     >
-      <Handle type="target" position={Position.Left} className="!w-2 !h-2 !bg-[rgb(var(--accent))]" />
+      <Handle type="target" position={Position.Left} className="!w-2 !h-2 !bg-[rgb(var(--text-muted))]" />
       {d.displayNumber && (
         <div className="text-[10px] text-[rgb(var(--text-muted))] mb-0.5">{d.displayNumber}</div>
       )}
@@ -35,7 +35,7 @@ export function SceneNode({ data, selected }: NodeProps<Node<SceneNodeData, 'sce
       <div className="text-sm font-medium truncate" title={d.title}>
         {d.title || 'Untitled'}
       </div>
-      <Handle type="source" position={Position.Right} className="!w-2 !h-2 !bg-[rgb(var(--accent))]" />
+      <Handle type="source" position={Position.Right} className="!w-2 !h-2 !bg-[rgb(var(--text-muted))]" />
     </div>
   )
 }

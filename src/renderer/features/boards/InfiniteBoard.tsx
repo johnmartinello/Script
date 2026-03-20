@@ -588,7 +588,7 @@ export function InfiniteBoard({
     >
       {marqueeState ? (
         <div
-          className="pointer-events-none absolute border border-[rgb(var(--accent))] bg-[rgb(var(--accent))]/10"
+          className="pointer-events-none absolute border border-[rgb(var(--text-muted))] bg-[rgb(var(--bg-muted))]/60"
           style={{
             left: `${Math.min(marqueeState.startScreenX, marqueeState.currentScreenX)}px`,
             top: `${Math.min(marqueeState.startScreenY, marqueeState.currentScreenY)}px`,

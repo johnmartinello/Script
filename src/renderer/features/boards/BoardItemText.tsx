@@ -182,7 +182,7 @@ export function BoardItemText({
             title="Bold all text"
             className={`h-6 min-w-6 rounded px-1 text-xs font-semibold ${
               boldAll
-                ? 'bg-[rgb(var(--accent))] text-[rgb(var(--accent-foreground))]'
+                ? 'bg-[rgb(var(--bg-muted))] text-[rgb(var(--text))]'
                 : 'text-[rgb(var(--text))] hover:bg-[rgb(var(--bg-muted))]'
             }`}
             onClick={() => onFormatChange({ boldAll: !boldAll })}
@@ -196,7 +196,7 @@ export function BoardItemText({
               title={`Align ${align}`}
               className={`h-6 min-w-6 rounded px-1 text-[11px] uppercase ${
                 normalizedAlign === align
-                  ? 'bg-[rgb(var(--accent))] text-[rgb(var(--accent-foreground))]'
+                  ? 'bg-[rgb(var(--bg-muted))] text-[rgb(var(--text))]'
                   : 'text-[rgb(var(--text))] hover:bg-[rgb(var(--bg-muted))]'
               }`}
               onClick={() => onFormatChange({ textAlign: align })}

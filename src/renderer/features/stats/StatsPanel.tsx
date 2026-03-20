@@ -43,7 +43,7 @@ export function StatsPanel() {
               onClick={() => setScope('canon')}
               className={`px-3 py-1 ${
                 scope === 'canon'
-                  ? 'bg-[rgb(var(--accent))] text-white'
+                  ? 'bg-[rgb(var(--bg))] text-[rgb(var(--text))]'
                   : 'bg-[rgb(var(--bg-muted))] hover:bg-[rgb(var(--border))]'
               }`}
             >
@@ -54,7 +54,7 @@ export function StatsPanel() {
               onClick={() => setScope('all')}
               className={`px-3 py-1 border-l border-border ${
                 scope === 'all'
-                  ? 'bg-[rgb(var(--accent))] text-white'
+                  ? 'bg-[rgb(var(--bg))] text-[rgb(var(--text))]'
                   : 'bg-[rgb(var(--bg-muted))] hover:bg-[rgb(var(--border))]'
               }`}
             >
@@ -92,7 +92,7 @@ export function StatsPanel() {
 
         {stats.sceneCountUnattachedBranch > 0 && (
           <section>
-            <div className="border border-amber-500/50 bg-amber-500/10 text-xs px-3 py-2 rounded">
+            <div className="border border-border bg-[rgb(var(--bg-muted))] text-xs px-3 py-2 rounded">
               <span className="font-medium">
                 {stats.sceneCountUnattachedBranch} unattached branch
                 {stats.sceneCountUnattachedBranch === 1 ? ' scene' : ' scenes'}
